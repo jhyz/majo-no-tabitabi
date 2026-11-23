@@ -120,3 +120,63 @@ ones with a hint. A toast on each first discovery; a toast when the story grants
 ### Story
 Fran's last lesson (`invest`) now grants thunder 2 and the big forms of wind / water / fire / ice (earth 2 as before);
 story.js start() back-fills saves past `majo_named`; such a save gets one toast on load (`flags.elementsKit`).
+
+## Fire look (flame cards, 2026-11-23) — visual side only
+Fire used to be lathed flame volumes (`fireSurface.js`, two extra draws) plus fx lobes and tongues that read as stiff
+orange cones. It is now painted the way anime paints fire: soft, layered tongues with a deep-red rim, an orange-red body
+and a small golden heart, licking upward, splitting at the tip, leaning downwind and swaying; embers rise and smoke rolls
+off the top. Spread, damage, timings and every gameplay rule are unchanged (fire.js only gained the `heatCell` accessor).
+
+**One instanced draw** (`elements-flames`, renderOrder 4, `fxMaterial` premultiplied blend, fog / canvas tone path via
+`fxOut`). Each instance is a 10-vertex camera-facing strip (8 triangles) of one type: flame tongue, spark (shocked
+reactors), ground firelight disc, ember, smoke puff. Paint order = instance order: smoke → back tongues + firelight →
+tongues + sparks → embers. Layer caps 360 / 480 / 1600 / 640 (`MAX_FLAMES` 3080).
+- **Tongue shader**: three taps of a 128² tileable fbm (R period 4, G period 8) scrolling upward on a per-instance phase;
+  a teardrop mask with round foot and broad shoulders that the noise eats from the top into two or three tips; a smaller
+  inner heart with its own flicker; height pulse and sway in the vertex shader. Palette is tuned through the soft look's
+  AgX curve (bright orange would roll to cream): rim (0.25, 0.02, 0.002), body (0.5, 0.085, 0.002), heat (0.8, 0.2, 0.004),
+  heart (0.95, 0.48, 0.02) linear — under the day bloom threshold, ×0.8 at night. Layers: 0 back (big, darker, softer),
+  1 middle, 2 front (hotter). The card tilts 40 % toward camera-up so fire reads from the broom.
+- **Wind**: the tip leans by visual wind (`visualWindAt`, else `breezeAt`) × 0.08 × height, capped at 0.8 × height, bent
+  quadratically; ground cells read the wind stored on their 6 m heat cell once per frame.
+- **Embers / smoke** are stateless loops: the vertex shader moves them (`fract(time × rate + seed)`, rise, drift with the
+  wind, swirl); the CPU only writes the source. A negative rate means "timed": the CPU places it and passes the phase.
+  Smoke is lit by fx's shared ambient colour, warm underneath near the flames.
+- **Near fade**: cards the camera is about to pass through dissolve (no flat planes across the lens).
+
+**Sources** (counts scale with `G.quality.particles`; `low` = < 0.6):
+- ground cells: a middle tongue each, plus a hot front tongue within 75 m (low: one bigger tongue, front ones off, 45 m);
+  per 6 m heat cell: firelight disc, a back tongue (heat ≥ 1.5, low ≥ 3), 1–3 smoke loops, 2–5 embers.
+- burning trees: 4–12 tongues on the camera-facing skin of the crown and over its top, two up the trunk, smoke off the
+  crown, embers. Uses the flora handle's new `crownY` / `crownRY` (crown centre above the foot, half height); without
+  them the crown is guessed at 0.64 × height.
+- other burning reactors: a back tongue plus 1–5 tongues hugging the body, smoke off non-living things, embers.
+- whirls, patches and short-lived pieces (pool of 256) through the API below.
+
+**API — `G.elements.flames`**
+- `lick(pos, { n=3, r=0.5, h=1.2, dur=0.7, heat=1, spread=1, delay=0 })` — short licks; `G.fx.kit.tongues` routes every
+  warm-coloured call here (other colours keep the painted lathe).
+- `burst(pos, normal, radius=1, big=false)` — a fireball bloom: a fat rising puff (three layers), 3–8 tongues licking out
+  and up, smoke (none for radius < 0.5). `combustion.bloom` (fx: hit_fire, ignite, fire explosions, the fire cast
+  release) routes here; `combustion.soot` does nothing while the cards exist.
+- `whirl({ pos, R=4, H=20, dur? })` → `{ pos, R, H, k, alive, kill(sec), remove() }` — a swirling flame sheet: three arms
+  of tongues spiralling up the funnel (each trailing behind its motion), a turning ring at the foot, smoke off the top,
+  swirling embers. `k` (0..1.2) scales it. `kit.whirl({ flame: true })` makes a timed one.
+- `patch({ pos, r=2, I=1 })` → `{ pos, r, I, alive, dims(r0, r1), kill(sec), remove() }` — low flames breathing on a
+  pool; it has the fx shape-handle interface, so fields.js keeps it in a lava field's `look` list.
+
+**Wiring**: 炎旋 (fusions.js) = a whirl handle (`tw.flame`, `k` follows the tornado); its air funnel shapes erode to wisps
+(0.6 / 0.9) in smoky colours while it carries fire and recover when it changes element. Lava fields carry a patch and the
+lava disc is retuned (0xf2460a / 0xffb848 × 1.05; was cream). The grass-fire kit smoke columns and the per-cluster fx
+'smoke' / 'embers' emitters are gone (the cards draw both). `src/elements/fireSurface.js` is deleted.
+
+**Cost** (`.tmp` probe, 1280×720, 'high', same scene scripts before / after; fire draws = flames meshes only):
+grass fire 3 → 1 draw, 19.5 k → 2.0 k tris · burning tree 3 → 1, 19.4 k → 1.7 k · meteor crater 3 → 1, 47.2 k → 9.6 k ·
+fire tornado 3 → 1, 39.3 k → 9.2 k · fire explosion 3 → 1, 43.7 k → 9.7 k. Live fx shapes in those scenes drop (e.g. the
+tornado 63 → 15). 'low': ≤ 600 instances, ≤ 4.8 k tris in the same scenes. The cost that matters is overdraw: big
+fires stack 3–5 translucent cards per pixel.
+
+**Known gaps**: no soft depth fade where a card meets steep ground (crater walls cut tongues in a straight line; only
+the near fade helps); the fire bolt in flight is still the fx lobe mantle (`combustion.flight`); the tornado's air
+funnel still shows faint smoky wisps; smoke / ember loops of a newly lit heat cell start mid-flight (faded by the cell's
+heat, but visible on a fast spread); on the canvas path ('low', no post chain) the golden heart is a little paler.

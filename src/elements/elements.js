@@ -700,6 +700,13 @@ export const elementsSystem = {
       freezeWater: (x, z, r = 4, duration = 30) => E.floes.freeze(x, z, r, duration),
       get floes() { return E.floes.floes; },
       lightAt, addLight,
+      /** Fire look (flames.js, docs/api/elements.md "Fire look"): lick(pos, o) · burst(pos, normal, r, big) · whirl(o) -> handle · patch(o) -> handle */
+      flames: {
+        lick: (pos, o) => E.flames.lick(pos, o),
+        burst: (pos, normal, r, big) => E.flames.burst(pos, normal, r, big),
+        whirl: (o) => E.flames.whirl(o),
+        patch: (o) => E.flames.patch(o),
+      },
       query, nearest,
       /** The last thunder chain: { links:[[Vector3, Vector3]], reactors, t }. */
       get lastChain() { return E.lastChain; },

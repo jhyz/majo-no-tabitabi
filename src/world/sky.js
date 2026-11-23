@@ -26,6 +26,10 @@ const PRESETS = {
   low: { samples: 0, fxaa: true, ao: false, bloom: false, shafts: true, sharpen: 0 },
   med: { samples: 4, fxaa: false, ao: false, bloom: true, shafts: true, sharpen: 0.7 },
   high: { samples: 4, fxaa: false, smaa: true, ao: true, bloom: true, shafts: true, sharpen: 0.8 }, // light r3: 0.5 -> 0.8 (clamped CAS, no ringing)
+  // phones (core/boot.js QUALITY.mobile, systems see 'low'): rendered at >= 1080 lines, close to the screen's own pixels,
+  // so no FXAA and no sharpen (two full-screen passes fewer: the tone pass only runs for bloom / sharpen) and no sun
+  // shafts (a full-res pass a 6-inch screen hardly shows). Judged on 1:1 crops at 844x390 @3x: the edges stay clean.
+  mobile: { samples: 0, fxaa: false, ao: false, bloom: false, shafts: false, sharpen: 0 },
 };
 
 // scratch (no per-frame allocations)
@@ -204,7 +208,9 @@ export const skySystem = {
       const off = new Set(String(G.params.gpuoff || '').split(',').map((x) => x.trim()).filter(Boolean));
       const old = G.params.gpu === '0' || G.params.perf === '0';
       G.gpuPass = { old, on: (k) => !old && !off.has(k) };
-      setGpuHook({ old, sc: G.gpuPass.on('sc'), tap: !old && G.params.gputap === '1' });
+      // phones (QUALITY.mobile): the shadow taps' early-out is on (a texture-bound handheld GPU saves 4 of 9 taps where
+      // the centre and four outer taps agree; no gain measured on the M5, so desktop tiers keep it off); ?gputap=0 = off
+      setGpuHook({ old, sc: G.gpuPass.on('sc'), tap: !old && (G.params.gputap === '1' || (!!q.mobile && G.params.gputap !== '0')) });
     }
     addMaterialHook(veilHook);
     // look tiers: detail on, fine detail scale, cloud shadows (docs/api/look.md)
@@ -217,7 +223,7 @@ export const skySystem = {
     BELL_SQUARES.slice(0, 5).forEach((s, i) => U.mvCanyonOpen.value[i].set(BELL.x + s.x, BELL.z + s.z, s.r, 0));
 
     // ---- sky dome ----
-    const dome = createSkyDome(q.name);
+    const dome = createSkyDome(q.mobile ? 'mobile' : q.name);
     scene.add(dome.mesh);
     scene.background = null;
     renderer.setClearColor(0x000000, 1);
@@ -233,7 +239,8 @@ export const skySystem = {
     G.lights = { sun, hemi };
 
     // ---- post ----
-    const preset = { ...(PRESETS[q.name] || PRESETS.high) };
+    const tierPreset = (q.mobile && PRESETS.mobile) || PRESETS[q.name] || PRESETS.high;
+    const preset = { ...tierPreset };
     if (q.bloom === false) preset.bloom = false;
     if (renderer.getPixelRatio() > 1.3 && preset.samples > 2 && q.name !== 'high') preset.samples = 2; // retina: fewer MSAA samples (not on high: grass edges)
     const s = G.settings || {};
@@ -363,9 +370,15 @@ export const skySystem = {
     G.events.on('resize', ({ w, h }) => { try { pipe.setSize(w, h); } catch (e) { G.reportError('sky:resize', e); } });
     G.events.on('settings:changed', (set) => {
       for (const [k, key] of [['ao', 'postAO'], ['bloom', 'postBloom'], ['shafts', 'postShafts']]) {
-        if (typeof set?.[key] === 'boolean') post.set(k, set[key] && (k !== 'bloom' || q.bloom !== false));
+        // the settings only switch OFF what the tier has: any settings write (a volume slider) used to turn AO and shafts
+        // on for 'low' / phones (and AO on 'med') until the next reload
+        if (typeof set?.[key] === 'boolean') post.set(k, set[key] && !!tierPreset[k] && (k !== 'bloom' || q.bloom !== false));
       }
     });
+
+    // phones shedding cost (core/boot.js 'perf:lite' level 2): drop the painterly surface detail and the drifting cloud
+    // shadows (two uniform switches in the lighting hook); back on when the frame has room again
+    if (q.mobile) G.events.on('perf:lite', (e) => { const lite = e?.level >= 2, v = U.mvQ.value; v.x = lite ? 0 : 1; v.z = lite ? 0 : 1; });
 
     G.renderFrame = () => this.render();
   },

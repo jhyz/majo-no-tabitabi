@@ -1,0 +1,46 @@
+name: 问题反馈 · Bug report
+description: 卡关、穿模、光影、性能或其他游戏问题 · Something in the game is wrong
+labels: ["feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈！小问题也可以直接写在置顶的[问题反馈专帖 #7](https://github.com/shoal-rat/majo-no-tabitabi/issues/7)。
+        Thanks! Small things can also go into the pinned feedback thread #7.
+  - type: textarea
+    id: what
+    attributes:
+      label: 发生了什么 · What happened
+      description: 实际看到的现象，以及你原本以为会怎样。
+    validations:
+      required: true
+  - type: input
+    id: objective
+    attributes:
+      label: 当前手记目标 · Journal objective
+      placeholder: 例如：骑上扫帚，向沙耶示范穿过三道练习环
+  - type: input
+    id: where
+    attributes:
+      label: 所在地点 · Where
+      placeholder: 地图上的地名，或在哪两个地点之间
+  - type: textarea
+    id: steps
+    attributes:
+      label: 怎么触发的 · Steps
+      description: 触发前做了什么（骑扫帚、对练、读档、施了某个魔法……）
+  - type: input
+    id: device
+    attributes:
+      label: 设备与浏览器 · Device / browser
+      placeholder: 例如：MacBook Air M2 · Chrome 131；iPhone 15 · Safari
+  - type: dropdown
+    id: quality
+    attributes:
+      label: 画工档位 · Quality
+      options: ["素描 (low)", "淡彩 (med)", "浓彩·流畅", "浓彩 (high)", "不清楚 · not sure"]
+  - type: textarea
+    id: media
+    attributes:
+      label: 截图或录屏 · Screenshots
+      description: 画面相关的问题请尽量附上。

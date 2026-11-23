@@ -1,6 +1,7 @@
 // 旅途见闻: the fourth journal page (menu.js calls wildsEntries / wildsCount / wildsRow / wildsDetail).
 // Reads G.wilds.journal() (src/gameplay/wilds.js): the stray stars and the careless witch's note, one entry per region
-// (places found, stars, chests), the ring courses. Words: src/locales/zh-CN/gameplay.wilds.js (page.*).
+// (places found, stars, chests), the ring courses, the roadside errands (G.errands.journal(), words in
+// gameplay.errands.page.*). Words: src/locales/zh-CN/gameplay.wilds.js (page.*).
 import { G } from '../core/game.js';
 import { t } from '../core/i18n.js';
 import { el } from './dom.js';
@@ -8,6 +9,7 @@ import { icon } from './icons.js';
 import { addCss } from './style.js';
 
 const tt = (k, p) => t('gameplay.wilds.' + k, p);
+const te = (k, p) => t('gameplay.errands.' + k, p);
 
 addCss(`
 /* four journal sub-tabs: on touch (wider tabs) let the fourth wrap rather than run off the list */
@@ -25,6 +27,12 @@ addCss(`
 .wd-det .rc { margin-top: 12u; }
 .wd-det .rc .nm { font: 700 16u/1.4 var(--ft); color: var(--ink); letter-spacing: .12em; }
 .wd-det .rc .sm { font: 400 13u/1.5 var(--fb); color: var(--ink3); }
+.wd-row.er .ic { color: #e8c890; }
+.wd-det .er { margin-top: 12u; }
+.wd-det .er .nm { font: 700 16u/1.4 var(--ft); color: var(--ink); letter-spacing: .12em; }
+.wd-det .er .nm.dim { color: var(--ink3); }
+.wd-det .er .sm { font: 400 13u/1.6 var(--fb); color: var(--ink3); }
+.wd-det .er .ob { font: 400 14u/1.6 var(--ft); color: var(--ink); }
 `);
 
 function data() { try { return G.wilds?.journal?.() || null; } catch (e) { G.reportError('ui:wilds', e); return null; } }
@@ -33,7 +41,9 @@ function data() { try { return G.wilds?.journal?.() || null; } catch (e) { G.rep
 export function wildsEntries() {
   const d = data();
   if (!d) return [];
-  return [{ type: 'stars', ...d.stars }, ...d.regions.map((r) => ({ type: 'region', ...r })), { type: 'rings', list: d.rings }];
+  let er = null;
+  try { er = G.errands?.journal?.() || null; } catch (e) { G.reportError('ui:errands', e); }
+  return [{ type: 'stars', ...d.stars }, ...d.regions.map((r) => ({ type: 'region', ...r })), { type: 'rings', list: d.rings }].concat(er ? [{ type: 'errands', ...er }] : []);
 }
 /** { n, of } for the sub-tab chip: places found. */
 export function wildsCount() {
@@ -43,6 +53,11 @@ export function wildsCount() {
 export function wildsRow(row, q) {
   row.classList.add('wd-row');
   if (q.type === 'stars') { icon('star', '', row); el('span', 'tt', row, tt('page.stars')); el('span', 'chip', row, tt('page.starsCount', { n: q.n, of: q.of })); return; }
+  if (q.type === 'errands') {
+    row.classList.add('er'); icon('side', '', row); el('span', 'tt', row, te('page.tab'));
+    el('span', 'chip' + (q.active ? ' act' : ''), row, te('page.count', { n: q.done, of: q.of }));
+    return;
+  }
   if (q.type === 'rings') {
     row.classList.add('rc'); icon('flag', '', row); el('span', 'tt', row, tt('page.rings'));
     const done = q.list.filter((r) => r.best !== null).length;
@@ -64,6 +79,25 @@ export function wildsDetail(D, q) {
     el('div', 'obh', D, tt('page.noteHead'));
     if (!q.lines.length) el('div', 'line dim', D, tt('page.noteNone'));
     for (const line of q.lines) el('div', 'line', D, line);
+    return;
+  }
+  if (q.type === 'errands') {
+    icon('side', 'ghost', D);
+    const k = el('div', 'kick', D); el('span', '', k, te('page.tab'));
+    el('div', 'big', D, te('page.tab'));
+    el('div', 'txt', D, te('page.sub'));
+    el('div', 'line dim', D, te('page.here', { n: q.done, m: q.active }));
+    for (const r of q.list) {
+      const b = el('div', 'er', D);
+      el('div', 'nm' + (r.known ? '' : ' dim'), b, r.title);
+      if (!r.known) continue;
+      el('div', 'sm', b, te('page.' + (r.state === 'done' ? 'done' : r.state === 'active' ? 'active' : 'open')) + ' · ' + te('page.where', { place: r.place }));
+      el('div', 'ob', b, r.objective || r.desc);
+    }
+    el('div', 'rule ink', D);
+    el('div', 'obh', D, te('page.keepHead'));
+    if (!q.keeps.length) el('div', 'line dim', D, te('page.keepNone'));
+    for (const x of q.keeps) { el('div', 'line', D, x.name); el('div', 'line dim', D, x.text); }
     return;
   }
   if (q.type === 'rings') {

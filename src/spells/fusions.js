@@ -17,7 +17,7 @@ const WHIRL = { fire: 'firewhirl', thunder: 'thunderwhirl', ice: 'frostwhirl', w
 const RAIN = { thunder: 'thunderstorm', ice: 'hailstorm', fire: 'warmfog', wind: 'squall' };
 /** tornado colours per fused element: [body, body rim, streaks, streak rim, dust, dust rim] (sRGB hex) */
 const WHIRL_LOOK = {
-  fire: [0xb8320c, 0xffc860, 0xff8a2a, 0xfff0b0, 0x5a3424, 0xff9a50],
+  fire: [0x2e211c, 0x6e4c3c, 0xff8a3a, 0xffc890, 0x5a3424, 0xff9a50],   // a smoky air funnel: the flames are cards (whirl)
   thunder: [0x3e3278, 0xd8c8ff, 0xb98cff, 0xffffff, 0x4a4060, 0xb9a0ff],
   ice: [0x78b4d8, 0xffffff, 0xd2f2ff, 0xffffff, 0xa8c8dc, 0xf2fbff],
   water: [0x2a74b4, 0xd6f2ff, 0x84d0ff, 0xffffff, 0x4a6e88, 0xbfe6ff],
@@ -93,16 +93,17 @@ export function createFusions(S) {
     tw.tick = 0.15;
     const L = WHIRL_LOOK[el];
     if (tw.shp?.length >= 3) { tw.shp[0].color(L[0], L[1]); tw.shp[1].color(L[2], L[3]); tw.shp[2].color(L[4], L[5]); }
+    // fire: the air funnel thins to smoky wisps so the flame sheet (cards, drawn earlier) shows through it
+    if (tw.shp?.length >= 2) { const f = el === 'fire'; tw.shp[0].erode?.(f ? 0.6 : 0.18, f ? 0.6 : 0.18); tw.shp[1].erode?.(f ? 0.9 : 0.3, f ? 0.9 : 0.3); }
     tw.recolor?.(L[0]);
     for (const h of tw.extra) h?.kill?.(0.3);
     tw.extra.length = 0;
     if (tw.em) { tw.em.remove?.(); tw.em = null; }
     const F = G.fx;
     const base = tw.at;
-    if (F?.shape && el === 'fire') {   // a twisting flame funnel inside the air
-      const h = F.shape({ kind: 'cone', pos: base, r0: tw.R * 0.18, r1: tw.R * 0.7, h: tw.H * 0.45, dur: 1, grow: [1, 1], erode: [0.16, 0.16], tex: 'billow', tile: [2, 1.2],
-        scroll: [2.4, -1.9], twist: 7, color: 0xd8340a, color2: 0xffd27a, core: 0.55, mode: 'flame', add: 0.35, I: 1.25, soft: 0.04, body: 0.95, handle: true });
-      if (h && h !== true) tw.extra.push(h);
+    if (el === 'fire') {   // a swirling sheet of flame tongues climbing the funnel (elements/flames.js whirl)
+      const h = G.elements?.flames?.whirl?.({ pos: base, R: tw.R, H: tw.H });
+      if (h) { tw.extra.push(h); tw.flame = h; }
     }
     const emName = { fire: 'embers', thunder: 'aura_thunder', ice: 'snow', water: 'waterfall_mist' }[el];
     try { tw.em = F?.emitter?.(emName, { radius: tw.R, height: tw.H * 0.5, color: COLORS[el], scale: 1.2 }) || null; if (tw.em) tw.em.pos.copy(base); } catch (e) { tw.em = null; }
@@ -123,7 +124,7 @@ export function createFusions(S) {
   /** back to plain air */
   function unfuse(tw) {
     tw.el = null;
-    if (tw.shp?.length >= 3) { tw.shp[0].color(0x5fae8e, 0xe6fff2); tw.shp[1].color(0xbaf2d6, 0xffffff); tw.shp[2].color(0x9a8c72, 0xcabda2); }
+    if (tw.shp?.length >= 3) { tw.shp[0].color(0x5fae8e, 0xe6fff2); tw.shp[1].color(0xbaf2d6, 0xffffff); tw.shp[2].color(0x9a8c72, 0xcabda2); tw.shp[0].erode?.(0.18, 0.18); tw.shp[1].erode?.(0.3, 0.3); }
     tw.recolor?.(0x9fe8c0);
     for (const h of tw.extra) h?.kill?.(0.3);
     tw.extra.length = 0;
@@ -142,6 +143,7 @@ export function createFusions(S) {
     });
     // rain falling on the funnel: it drinks the cloud
     if (!tw.el && k > 0.5 && G.elements?.isSpellRainAt?.(at.x, at.z)) fuseTornado(tw, 'water', null);
+    if (tw.flame) { if (tw.flame.alive && tw.el === 'fire') tw.flame.k = k; else tw.flame = null; }
     if (!tw.el || k <= 0.2) return;
     const team = tw.team, src = tw.caster;
     if (tw.em) tw.em.pos.set(at.x, at.y + 1 + Math.sin(G.time.t * 1.3) * 0.5, at.z);
@@ -150,7 +152,7 @@ export function createFusions(S) {
     if ((tw.fxT -= dt) <= 0) {
       const q = quality();
       _v.set(at.x + rnd(-1, 1) * R * 0.6, at.y + 0.2, at.z + rnd(-1, 1) * R * 0.6);
-      if (tw.el === 'fire') { tw.fxT = 0.28 / q; K?.tongues?.(_v, 2, R * 0.4, rnd(1.4, 2.4), { dur: 0.9, I: 1.4 }); if (Math.random() < 0.3) K?.smoke?.(_w.set(at.x, at.y + H * 0.45, at.z), 2.2, { n: 1, dur: 3, rise: 3 }); }
+      if (tw.el === 'fire') { tw.fxT = 0.28 / q; K?.tongues?.(_v, 2, R * 0.4, rnd(1.4, 2.4), { dur: 0.9, I: 1.4 }); if (!tw.flame && Math.random() < 0.3) K?.smoke?.(_w.set(at.x, at.y + H * 0.45, at.z), 2.2, { n: 1, dur: 3, rise: 3 }); }
       else if (tw.el === 'thunder') {
         tw.fxT = 0.18 / q;
         const a = Math.random() * TAU, y0 = rnd(2, H * 0.5), y1 = y0 + rnd(-3, 4), rr = R * (0.35 + 0.6 * y0 / (H * 0.6));

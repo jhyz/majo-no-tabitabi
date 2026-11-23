@@ -65,7 +65,9 @@ export function createWater(G, { data, noise }) {
   const ripples = Array.from({ length: MAX_RIPPLES }, () => new THREE.Vector4(0, 0, -99, 0));
   const wakes = Array.from({ length: MAX_WAKES }, () => new THREE.Vector4(0, 0, -99, 0));
   const black = new THREE.DataTexture(new Uint8Array([0, 0, 0, 0]), 1, 1); black.needsUpdate = true;
-  const refl = new PlanarReflection({ level: SEA_LEVEL, scale: [0.33, 0.45, 0.60][WQ], maxWidth: [530, 840, 1280][WQ], detail: WQ });
+  // phones (core/boot.js QUALITY.mobile): a smaller mirror refreshed less often; off while the frame sheds cost ('perf:lite')
+  const mob = !!G.quality?.mobile;
+  const refl = new PlanarReflection({ level: SEA_LEVEL, scale: [0.33, 0.45, 0.60][WQ], maxWidth: mob ? 400 : [530, 840, 1280][WQ], detail: WQ });
   const wakePath = Array.from({ length: TRAIL_SAMPLES }, () => new THREE.Vector4(0, 0, -99, 0));
   const wakeBounds = new THREE.Vector4(0, 0, -1, -1);
   const lake = POI.lake;
@@ -192,9 +194,9 @@ export function createWater(G, { data, noise }) {
     /** Screen-space refraction of the bed through the waves (med / high; needs the post pipeline). */
     refract: true,
     /** Reflection refresh interval in frames (1 = every frame). */
-    reflectEvery: [3, 2, 1][WQ],
+    reflectEvery: mob ? 4 : [3, 2, 1][WQ],
     /** Refresh interval while the camera is still (round 3). */
-    reflectStill: [9, 7, 4][WQ],
+    reflectStill: mob ? 12 : [9, 7, 4][WQ],
     /** Draw the planar reflection now, before the scene pass (called by the sky system with the final camera pose). */
     beforeScene(renderer, camera) {
       if (!refl || camera !== G.camera) return;
@@ -281,5 +283,6 @@ export function createWater(G, { data, noise }) {
   // anything landing in the water makes rings
   G.events.on('element:applied', (e) => { if (e?.pos && Math.abs(e.pos.y - SEA_LEVEL) < 3) water.ripple(e.pos.x, e.pos.z, 0.6 + Math.min(0.8, (e.radius || 1) * 0.08)); });
   G.events.on('physics:impact', (e) => { if (e?.pos && Math.abs(e.pos.y - SEA_LEVEL) < 1.2 && e.speed > 3) water.ripple(e.pos.x, e.pos.z, Math.min(1.2, e.speed * 0.08)); });
+  if (mob) G.events.on('perf:lite', (e) => { water.reflect = !(e?.level >= 1); });
   return water;
 }

@@ -208,7 +208,10 @@ export function createQuests(story, DEFS) {
     if (uiT > 0 && !markersDirty) return;
     uiT = 0.5;
     if (G.gameplay?.raceRunning) return; // the race owns the tracker while it runs
-    const tr = api.tracker();
+    // an accepted roadside errand near its next target (gameplay/errands.js) shows instead of the main objective
+    let tr = null;
+    try { tr = G.errands?.tracker?.() || null; } catch (e) { tr = null; }
+    tr ||= api.tracker();
     const key = tr ? tr.title + '|' + tr.objective + '|' + (tr.progress || '') : '';
     if (key !== trackerKey) { trackerKey = key; G.ui.setTracker?.(tr); }
     const list = [];

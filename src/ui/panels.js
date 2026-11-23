@@ -7,6 +7,7 @@ import { icon } from './icons.js';
 import { addCss } from './style.js';
 import { BINDINGS } from '../core/input.js';
 import { touchUI, touchSettingRows, createTouchGuide } from './touch.js';   // touch controls: their own rows + guide
+import { mobileDevice } from '../render/gpubench.js';
 
 addCss(`
 /* ---- settings ---- */
@@ -107,14 +108,18 @@ export function navList(rows, onPick, opts = {}) {
 
 // ---- settings -------------------------------------------------------------------------------------------
 const SLIDER = (k, label, min, max, step, fmt) => ({ k, label, type: 'slider', min, max, step, fmt });
+// phones / tablets list their own tier first ('mobile', core/boot.js QUALITY) and keep low / med / high selectable
+// ('highfast' is a desktop-GPU step; five choices no longer fit the compact row)
+const qualityTiers = () => (mobileDevice() || G.settings?.quality === 'mobile' ? ['mobile', 'low', 'med', 'high'] : ['low', 'med', 'highfast', 'high']);
 function settingRows() {
   const pct = (v) => String(Math.round(v * 100));
   const secs = [
     { head: 'ui.settings.sound', rows: [SLIDER('master', 'ui.settings.master', 0, 1, 0.05, pct), SLIDER('music', 'ui.settings.music', 0, 1, 0.05, pct), SLIDER('sfx', 'ui.settings.sfx', 0, 1, 0.05, pct)] },
     { head: 'ui.settings.view', rows: [SLIDER('sens', 'ui.settings.sens', 0.2, 3, 0.1, (v) => v.toFixed(1)), { k: 'invertY', label: 'ui.settings.invertY', type: 'toggle' }] },
     { head: 'ui.settings.picture', rows: [
-      { k: 'quality', label: 'ui.settings.quality', type: 'choice', opts: () => ['low', 'med', 'highfast', 'high'].map((v) => ({ v, l: t('ui.settings.q.' + v) })), note: true },
+      { k: 'quality', label: 'ui.settings.quality', type: 'choice', opts: () => qualityTiers().map((v) => ({ v, l: t('ui.settings.q.' + v) })), note: true },
       { k: 'look', label: 'ui.settings.look', type: 'choice', opts: () => ['soft', 'vivid'].map((v) => ({ v, l: t('ui.settings.lookOpt.' + v) })) },
+      ...(mobileDevice() ? [{ k: 'keep1080', label: 'ui.settings.keep1080', type: 'toggle' }] : []), // phones: never below 1080 lines
       { k: 'shake', label: 'ui.settings.shake', type: 'toggle' }, { k: 'cinematic', label: 'ui.settings.cinematic', type: 'toggle' }, { k: 'hints', label: 'ui.settings.hints', type: 'toggle' }] },
   ];
   // touch screens: their own section (button size / opacity / drag-to-look) instead of the mouse speed and the key list
@@ -182,6 +187,7 @@ export function createSettings(parent) {
     const s = S();
     if (s[k] === v) return;
     s[k] = v;
+    if (k === 'quality') s.qualityAuto = null; // the player's own choice: boot never re-picks it (core/boot.js autoStale)
     if (k === 'lang') { try { setLocale(v); } catch (e) { G.reportError('ui:lang', e); } }
     try { G.save?.writeSettings(); } catch (e) { G.reportError('ui:settings', e); }
     paint();

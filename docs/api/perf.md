@@ -539,3 +539,77 @@ this one (score ≤ 0.7 × REF), 'highfast' up to 1.8 × REF, then 'med', then '
 a later picture round needs the room; grass and the lighting hook's per-pixel cost remain the two largest items — any new
 full-screen pass (ink line, distortion) must be paid for there or stay at the AO pass's resolution.
 New tools: `tools/perf/gpuprobe.js` and `node tools/perf.mjs --probe …` (per-pass, per-term, resolution-sweep and overdraw probes).
+
+## Phones (mobile round 2, 2026-11-23)
+
+Players reported phones "very blurry" and "stuttering". Cause: a phone got 'low' at pixel ratio 1 (390 rendered lines on a
+3× screen of 1170, 0.33 MP stretched 3× by the browser; dynamic resolution took it down to ~0.19 MP), and it ran
+uncapped, so a handset that could not hold 60 fps alternated 16 / 33 ms frames.
+
+**The 'mobile' tier** (`QUALITY.mobile` in `src/core/boot.js`, settings key `mobile`, label 掌上). Picked automatically on a
+phone / tablet (`gpubench.js mobileDevice()`) when the player never chose a tier; an older automatic pick (the old phone
+'low', a desktop probe result) is re-picked; a tier chosen in settings is kept (the settings panel clears
+`settings.qualityAuto`). On a handheld the settings row lists 掌上 素描 淡彩 浓彩 ('highfast' is a desktop-GPU step).
+Systems see `name: 'low'` and inherit every low cut; `G.quality.mobile` adds:
+
+| knob | where | mobile | low |
+|---|---|---|---|
+| rendered lines (short side) | `core/boot.js` `minLines` | 1080 by default (pixel ratio 2.77 at 844×390 @3×, 2.52 at 932×430; the device ratio when the screen has fewer lines), 900 / 720 only as the last dynamic-resolution steps. Every tier on a handheld gets this default. | 390 |
+| AA / sharpen / shafts | `world/sky.js` `PRESETS.mobile` | none / 0 / off (two full-screen passes fewer; judged on 1:1 crops) | FXAA / 0 / on |
+| sun shadow | `render/shadows.js` `TIERS.mobile` | 1 cascade, ±40 m, 1024 | 2 cascades (±24, ±110 m) |
+| shadow taps | `world/sky.js` `setGpuHook({ tap })` | early-out on (`?gputap=0` off) | off |
+| clouds | `render/skydome.js` | 8 steps, layer ≤ 320 px wide, probe 96 | 10, 400, 128 |
+| grass / flowers | `world/flora/grass.js` | outer ring 104 m, sparser flower rings, density 0.35 | 136 m, 0.5 |
+| trees | `world/flora.js` | impostor swap 0.62×, scenery 340 m, flora shadows 26 m, impostor shadows 60 m | 0.72×, 440, 30, 100 |
+| places / city blocks / small objects | `world/structures.js`, `builders/bellcrown.js` | NEAR 100 m, city blocks 40 m with coarser stand-ins (cell 1.3), `cull` / `standIn` distances × 0.7, building casters 44 m | 120, 48 (1.0), × 1, 58 |
+| water mirror | `world/water.js` | ≤ 400 px, every 4th / 12th frame | 530, 3rd / 9th |
+| crowds, fx, life | `QUALITY.mobile` density 0.35, particles 0.4 | | 0.5, 0.5 |
+
+**Frame pacing** (`render/dynres.js` `createPacer`, `G.pace`). On a handheld, after 3 s of play the next 5 s run capped at
+60; a device that clearly holds it (mean ≤ 17.4 ms, ≤ 10 % of frames over 20 ms) keeps 60, any other is capped at 30
+for the session (two over-budget seconds at 60 later also drop it). The limiter skips display refreshes in the main loop
+(`gate(now)`); 60 / 90 / 120 Hz screens all land on 33.3 ms. `?fps=30|60|0` forces a cap on any tier.
+
+**Dynamic resolution on a handheld: scene cost first, lines last.** Its budget follows the pacer (33.3 ms at the cap).
+Steps (`MOB_LINES` / `MOB_LITE` in `core/boot.js`, any tier on a handheld): 1 = `'perf:lite'` level 1 (water mirror off,
+outermost grass and flower rings hidden); 2 = level 2 (also the painterly surface detail and the drifting cloud shadows,
+`mvQ.x` / `mvQ.z`); 3 = 900 lines; 4 = 720 lines (pipeline render scale, the canvas keeps its size, the edge-aware
+upscale + CAS draws the last pass). Steps 1–2 follow the usual rule (two 1 s windows over 1.14 × budget); a lines step only
+when lite 2 is on AND frames stay over 40 ms (< 25 fps at the cap) for 4 s (`stepRule` in `render/dynres.js`). Recovery
+is one step per quiet spell (8 s, doubling if it pumps), deepest first: lines back to 1080 before the lite levels lift.
+Settings 「保持 1080」 (`settings.keep1080`, default off, row shown on handhelds only): `G.dynRes.limit = 2`, the lines
+never drop, lite levels still do. Checked with a simulated slow phone (a `.tmp` script spinning 45 ms inside `renderFrame`
+after a 24 ms trial → cap 30): lite 1 after 2 s, lite 2 after 4 s, 900 lines after 10 s, 720 after 14 s, held; quiet → 900
+after 8 s, 1080 after 16 s, lite 0 after 32 s; with keep1080 on the same load stops at lite 2, 1080 lines.
+
+**Bug fixed on the way** (`world/sky.js`): any settings write (a volume slider, the touch button size) switched AO and
+sun shafts on for 'low' (and AO for 'med') until the next reload; the settings now only switch off what the tier has.
+
+**Measured** (`node tools/play.mjs --mobile --size 844x390 --dpr 3`, scenes hometown 2220,50 · moor 1340,-110 · wilds
+180,-208 · city gate -2160,-430 · street -2160,-540 · a grass fire in the wilds; draws / tris = median frame; GPU shared
+with other jobs, so time is indicative). Before = 'low' (what phones got), after = 'mobile':
+
+| scene | MP before → after | draws | k tris |
+|---|---|---|---|
+| hometown | 0.33 → 2.52 | 464 → 450 | 1206 → 1172 |
+| moor | 0.33 → 2.52 | 296 → 288 | 987 → 959 |
+| wilds | 0.33 → 2.52 | 219 → 217 | 1039 → 1003 |
+| city gate | 0.33 → 2.52 | 321 → 322 | 1108 → 1052 |
+| city street | 0.33 → 2.52 | 280 → 267 | 1139 → 1012 |
+| fire | 0.33 → 2.52 | 218 → 218 | 1043 → 991 (fx 151 → 126) |
+
+At 932×430 @3×: 0.40 → 2.54 MP (2348×1083), same draws / tris. Desktop 'high' A/B against a copy of the tree without
+these changes (wilds, city gate; 1440×900 @2×): 251 / 456–461 draws and 1.89 / 2.37 M triangles in both. Per-layer A/B (meadow, `tools/perf.mjs --layers`): grass
+130 → 97 k tris, flora 48 → 25–33 draws, structures 108 → 87 k tris. Script time per frame did not change (~1–2 ms
+updates + 3–4 ms render submit on the M5).
+
+**Honest cost.** 1080 lines is 7.7× the pixels phones rendered before. On the M5 the mobile tier's serial frame at
+2.5 MP is ~10–13 ms (GPU split: main pass ~10–12 ms of which the lighting hook ~6–8 ms, post ~1.5 ms); the per-pixel
+switches it has (shadow taps, cloud shadows, detail, fog…) together are ~15 % of the main pass, the rest is the base
+shading of the hook. A phone GPU is ~2.5× (recent iPhone / flagship Android) to ~8× (mid-range Android) slower: the
+first hold 30 fps at 1080 lines; the last fall back to 720 lines (0.45× the pixels of 1080: ~20–25 fps estimated) and
+would need a cheaper path through the lighting hook to reach 30.
+**Left (other owners):** `src/gameplay/pickups.js` draws every pooled pickup always (zero-scale instances: ~100 k
+triangles a frame, the heart alone 76 k) → set `InstancedMesh.count` to the live high-water mark; `src/gameplay/wilds-puzzles.js`
+puzzle chests are never culled (9 draws each, drawn 3–4 km away: ~80–100 draws at the hometown) → wrap in a holder and
+`G.structures.cull(holder, pos, 220)` like `collect.js`.

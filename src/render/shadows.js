@@ -20,13 +20,15 @@ const TIERS = {
   high: [[15, 2048, -0.00012, 0.025, 1.6, 1], [52, 1536, -0.00022, 0.07, 1.3, 3], [180, 1024, -0.0006, 0.25, 1.0, 6]],
   med:  [[18, 1536, -0.00015, 0.035, 1.4, 1], [60, 1024, -0.0003, 0.1, 1.2, 3], [170, 1024, -0.0006, 0.25, 1.0, 6]],
   low:  [[24, 1024, -0.0002, 0.05, 1.2, 1], [110, 1024, -0.0005, 0.2, 1.0, 4]],
+  // phones (core/boot.js QUALITY.mobile): one cascade around her (80 m box); beyond it a 6-inch screen shows no cast shadow
+  mobile: [[40, 1024, -0.0003, 0.07, 1.1, 1]],
 };
 
 export function setupSunShadow(G, sun, quality) {
   const r = G.renderer;
   r.shadowMap.enabled = true;
   r.shadowMap.type = THREE.PCFShadowMap; // hardware compare + bilinear; the hook does its own Poisson taps
-  const tier = TIERS[quality.name] || TIERS.high;
+  const tier = (quality.mobile && TIERS.mobile) || TIERS[quality.name] || TIERS.high;
   const lights = [sun];
   for (let i = 1; i < tier.length; i++) {
     const l = new THREE.DirectionalLight(0xffffff, 0); // shadow-only: contributes no light anywhere
@@ -46,7 +48,7 @@ export function setupSunShadow(G, sun, quality) {
     const cam = sh.camera;
     cam.layers.enable(5); // PROXY_LAYER: shadow-only proxies of far buildings and merged character casters (DESIGN §9.4)
     cam.left = -half; cam.right = half; cam.top = half; cam.bottom = -half;
-    const back = i === tier.length - 1 ? 700 : 420;
+    const back = i === tier.length - 1 && i > 0 ? 700 : 420; // a lone cascade (mobile) keeps the inner cascade's depth range
     cam.near = 5; cam.far = back * 2;
     cam.updateProjectionMatrix();
     sh.bias = bias; sh.normalBias = nb; sh.radius = radius; sh.blurSamples = 8;

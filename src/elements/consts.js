@@ -61,5 +61,5 @@ export const FIRE = {
 /** Fire / light bookkeeping on a coarse grid. */
 export const HEAT_CELL = 6;
 
-export const MAX_FLAMES = 1600;
+export const MAX_FLAMES = 3080;   // flame-card instances (flames.js layers: smoke 360 · back 480 · main 1600 · embers 640)
 export const MAX_FIRE_LIGHTS = 4;

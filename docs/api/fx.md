@@ -286,3 +286,9 @@ texture is painted once (4 × 512² canvases).
 **Known shortfalls.** The bullet orb itself is the spell system's sphere (spells/visuals.js): it reads as a glassy ball
 next to the comet trail. Circles are flat: on steep slopes a big ground circle sinks into the hill. Slow motion also
 slows the heroine's input-driven motion (by design: a beat, not a pause). No settings row for `cinematic` yet.
+
+## As-built updates (fire look, 2026-11-23)
+Fire is drawn by elements' flame cards (docs/api/elements.md "Fire look"): `kit.tongues` with a warm colour →
+`G.elements.flames.lick`, `kit.whirl({ flame: true })` → `G.elements.flames.whirl`, `combustion.bloom` →
+`G.elements.flames.burst`, `combustion.soot` → no-op while the cards exist. Without the elements system the old painted
+shapes remain as the fallback. `combustion.flight` (the fire bolt's flame mantle) and `impactTrails` are unchanged.

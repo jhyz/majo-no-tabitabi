@@ -15,6 +15,7 @@ import { createCollect } from './collect.js';
 import { createRaces } from './races.js';
 import { createMechanics } from './mechanics.js';
 import { createWilds } from './wilds.js';   // the open country's discovery loop (stray stars, landmark puzzles, ring courses)
+import { createErrands } from './errands.js';   // roadside errands given by travellers at the landmarks
 
 const api = {};
 let L = null, PK = null, CO = null, RA = null, ME = null;
@@ -260,11 +261,13 @@ export const gameplaySystem = {
     G.travelNotes=registerTravelNotes(G);
     G.wilds = createWilds();
     try { G.wilds.init(); } catch (e) { G.reportError('gameplay:wilds', e); }
+    G.errands = createErrands();
+    try { G.errands.init(); } catch (e) { G.reportError('gameplay:errands', e); }
     PK = createPickups(api);
     PK.init();
     initShops();
     if (G.ui?.providers) {
-      G.ui.providers.mapMarkers = () => G.wilds?.markers?.() || [];   // the story replaces this and adds its own
+      G.ui.providers.mapMarkers = () => (G.wilds?.markers?.() || []).concat(G.errands?.markers?.() || []);   // the story replaces this and adds its own
       G.ui.providers.items = itemsProvider;
       G.ui.providers.lore = loreProvider;
     }
@@ -274,6 +277,7 @@ export const gameplaySystem = {
     PK?.clear();
     try { api.restore(); } catch (e) { G.reportError('gameplay:start', e); }
     try { G.wilds?.start(); } catch (e) { G.reportError('gameplay:wilds', e); }
+    try { G.errands?.start(); } catch (e) { G.reportError('gameplay:errands', e); }
     // the four great lanterns' state vs the barrier (e.g. an old save with three lit)
     if (ME?.barrierUp() && L.greatCount('gl_moon') >= BARRIER.need) ME.setBarrier(false, { instant: true });
   },
@@ -281,6 +285,7 @@ export const gameplaySystem = {
     if (!G.state) return;
     G.travelNotes.update();
     try { G.wilds?.update(dt); } catch (e) { G.reportError('gameplay:wilds', e); }
+    try { G.errands?.update(dt); } catch (e) { G.reportError('gameplay:errands', e); }
     for (const [n, m] of [['pickups', PK]]) {
       try { m.update(dt); } catch (e) { G.reportError('gameplay:' + n, e); }
     }

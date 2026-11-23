@@ -242,7 +242,7 @@ export const storySystem = {
     if (G.quests.isDone('apprentice') && !G.state.quests.mages) G.quests.start('mages', { silent: true });
     if (G.ui?.providers) {
       G.ui.providers.journal = () => G.quests.journal();
-      G.ui.providers.mapMarkers = () => mapMarkers().concat(G.travelNotes?.markers() || [], G.wilds?.markers?.() || []);
+      G.ui.providers.mapMarkers = () => mapMarkers().concat(G.travelNotes?.markers() || [], G.wilds?.markers?.() || [], G.errands?.markers?.() || []);
       G.ui.providers.lore = () =>
         journalNotes
           .filter((id) => G.state.flags[id])

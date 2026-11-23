@@ -47,12 +47,17 @@ export function defaultState() {
      *  map; puzzle id -> 'solved' | 'open'; ring course id -> { best, medal }; cairns / perches used; puzzles seen;
      *  steps = star rewards paid (every STAR_STEP stars) */
     wilds: { lm: {}, stars: {}, sighted: {}, puzzles: {}, rings: {}, cairns: {}, perches: {}, seen: {}, steps: 0 },
+    /** roadside errands (src/gameplay/errands.js): errand id -> { s: 'active' | 'done', step, v }; keepsake id -> 1;
+     *  traveller id -> 1 once she has met them (map pins, journal) */
+    errands: { list: {}, keep: {}, seen: {} },
   };
 }
 
 export const defaultSettings = () => ({ master: 0.8, music: 0.6, sfx: 0.85, sens: 1, invertY: false, quality: 'high', shake: true, hints: true, lang: 'zh-CN', postAO: true, postBloom: true, postShafts: true, look: 'soft', cinematic: true,
   // touch controls (src/ui/touch.js): 'auto' = on phones / tablets; button size and opacity; drag-to-look speed
-  touch: 'auto', touchSize: 1, touchAlpha: 0.8, touchSens: 1 });
+  touch: 'auto', touchSize: 1, touchAlpha: 0.8, touchSens: 1,
+  // phones / tablets: true = never render fewer than 1080 lines (dynamic resolution only sheds scene cost; core/boot.js)
+  keep1080: false });
 
 function deepMerge(base, extra) {
   if (!extra || typeof extra !== 'object') return base;

@@ -1,6 +1,7 @@
 // Closed, tapered flame lobes and ballistic impact trails. Both use the existing instanced FX grid.
 // X/Y/Z form an object-space frame; the surface keeps its silhouette when the camera crosses the flight axis.
 import * as THREE from 'three';
+import { G } from '../core/game.js';
 
 export const fireVertex = /* glsl */`
   else if (kind == 9) {
@@ -117,7 +118,12 @@ export function createCombustion(add, quality) {
     }
     return handles;
   }
+  // With the elements system present, blooms and their soot are drawn as flame cards (elements/flames.js burst():
+  // a rising puff of flame, tongues licking out, smoke). The lobes below are the fallback.
+  const cards = () => G.elements?.flames;
   function bloom(pos, normal, radius, big) {
+    const F = cards();
+    if (F) { F.burst(pos, normal, radius, big); return; }
     const count = quality() < 0.6 ? 3 : (big ? 7 : 5);
     const phase = Math.random() * TAU;
     tangent.crossVectors(normal, Math.abs(normal.y) < 0.95 ? UP : RIGHT).normalize();
@@ -134,6 +140,7 @@ export function createCombustion(add, quality) {
     }
   }
   function soot(pos, normal, radius, big) {
+    if (cards()) return;   // burst() brings its own smoke
     const count = quality() < 0.6 ? 2 : big ? 6 : 4;
     const phase = Math.random() * TAU;
     for (let i = 0; i < count; i++) {

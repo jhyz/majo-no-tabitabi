@@ -43,7 +43,10 @@ export function createWildPuzzles({ resolveAt, grant, wstate, tt }) {
       h = { group: g, opened: false, open() { h.opened = true; lid.rotation.x = -1.1; lid.position.set(0, 0.85, -0.25); }, close() { h.opened = false; lid.rotation.x = 0; lid.position.set(0, 0.64, 0); } };
     }
     h.group.position.copy(pos); h.group.rotation.y = yaw;
-    G.scene.add(h.group);
+    // draw-call pass: the holder (at the origin) takes the distance cut; the chest's own visible flag stays free
+    const holder = new THREE.Group(); holder.name = 'wildsChestHolder'; holder.add(h.group);
+    G.scene.add(holder);
+    G.structures?.cull?.(holder, pos, 220);
     // solid, so a spell aimed at it bursts on it (projectiles stop on world colliders, not on neutral reactors)
     if (solid) h.col = G.world.addCollider({ x: pos.x, z: pos.z, r: 0.5, y0: pos.y - 0.5, y1: pos.y + 0.75, tag: 'wilds_chest' });
     return h;

@@ -129,8 +129,10 @@ pins stay above the thumbs.
 - Settings (`defaultSettings`): `touch: 'auto'|'on'|'off'`, `touchSize` 0.7–1.25, `touchAlpha` 0.25–1, `touchSens` 0.3–3
   (look px per finger px = 2.6 × touchSens; mouse `sens` does not apply to touch). Settings panel: a 触屏 section on
   any touch-capable device; in touch mode the key list and mouse speed are hidden, 操作 shows the touch guide.
-- Quality (`gpubench.js mobileDevice()`): a phone / tablet starts on 'low' (pixel ratio 1, dynamic resolution on)
-  without the probe; a tier the probe picked on one before is picked again; a tier the player chose is kept.
+- Quality (`gpubench.js mobileDevice()`): a phone / tablet gets the 'mobile' tier (掌上) without the probe: at least
+  1080 rendered lines, handheld cuts, 30 fps unless the device clearly holds 60 (docs/api/perf.md "Phones"); an earlier
+  automatic pick (old 'low', a probe result) is picked again; a tier the player chose is kept. The settings row on a
+  handheld lists 掌上 素描 淡彩 浓彩; every tier there keeps the 1080-line floor.
 
 **Rules for other UI.** New HUD layers that sit over the 3D picture: `pointer-events: none`, created before the touch
 layer or at least below `.mv-dlg` (the touch layer is inserted right after the stage layers); keep clear of the lower

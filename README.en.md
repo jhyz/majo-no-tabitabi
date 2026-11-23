@@ -152,6 +152,7 @@ node tools/acceptance/journey-cloud-weather.mjs  # cloud cover along the weather
 node tools/acceptance/journey-city-clouds.mjs    # the city wall hidden by cloud and revealed again, sunbeams
 node tools/acceptance/journey-eclipse.mjs        # the eclipse over the lake and the reflections on the water
 node tools/acceptance/journey-activities.mjs     # every puzzle kind solved with real spells, stars, a ring course, save round trip
+node tools/acceptance/journey-errands.mjs        # all five roadside errands through dialogue, flight and spells, save round trips
 node tools/check-i18n.mjs src                    # no player-visible text hard-coded in the source
 node tools/dead-code.mjs                         # source files that never reach the game bundle
 ```
@@ -160,7 +161,9 @@ node tools/dead-code.mjs                         # source files that never reach
 
 ## Issues and pull requests
 
-Bug reports are welcome: getting stuck, clipping, lighting or performance problems. Please include the current journal objective, where you were, what you did, your browser and the quality tier, and a screenshot when something looks wrong. For changes, open a pull request from your own branch. Every pull request is built and its character models are checked automatically.
+Bug reports are welcome in the pinned **[feedback thread #7](https://github.com/shoal-rat/majo-no-tabitabi/issues/7)**: getting stuck, clipping, lighting or performance problems. For a larger problem, open a separate issue with the bug-report template. Please include the current journal objective, where you were, what you did, your browser and the quality tier, and a screenshot when something looks wrong.
+
+For changes, open a pull request from your own branch. Every pull request is built and its character models are checked automatically. If an AI coding agent helps you, have it read [AGENTS.md](AGENTS.md) first: it lists the conventions that must not change and the checks to run.
 
 ## Licence and assets
 

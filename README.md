@@ -152,6 +152,7 @@ node tools/acceptance/journey-cloud-weather.mjs  # 沿天气锋面的云量变�
 node tools/acceptance/journey-city-clouds.mjs    # 城墙被云遮住又重新出现，云隙光
 node tools/acceptance/journey-eclipse.mjs        # 渡湖日食和水面倒影
 node tools/acceptance/journey-activities.mjs     # 每类机关都用真实法术解开，拾迷星，飞一条环线，存档往返
+node tools/acceptance/journey-errands.mjs        # 五个路边委托走完对话、飞行与施法，途中存档往返
 node tools/check-i18n.mjs src                    # 代码里没有写死玩家可见的文字
 node tools/dead-code.mjs                         # 列出没被打包进游戏的源文件
 ```
@@ -160,7 +161,9 @@ node tools/dead-code.mjs                         # 列出没被打包进游戏�
 
 ## 反馈与贡献
 
-欢迎用 Issue 报告卡关、穿模、光影或性能问题。请写上当前的手记目标、所在地点、触发步骤、浏览器和画质档位；画面问题最好附一张截图。提交修改请从自己的分支发起 Pull Request，每个 PR 都会自动构建游戏并检查角色模型。
+遇到卡关、穿模、光影或性能问题，欢迎到置顶的 **[问题反馈专帖 #7](https://github.com/shoal-rat/majo-no-tabitabi/issues/7)** 留言，复杂的问题也可以用「问题反馈」模板另开一帖。请写上当前的手记目标、所在地点、触发步骤、浏览器和画质档位；画面问题最好附一张截图。
+
+提交修改请从自己的分支发起 Pull Request，每个 PR 都会自动构建游戏并检查角色模型。用 AI 代理参与开发时，请先让它读 [AGENTS.md](AGENTS.md)，里面有不能改动的约定和必须运行的检查。
 
 ## 开源与素材
 

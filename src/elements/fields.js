@@ -81,9 +81,10 @@ export function createFields(E) {
     ],
     lava: (f, P) => [
       shape({ kind: 'disc', pos: P, r0: 0, r1: f.r, dur: 2, grow: [1, 1], erode: [0.0, 0.0], tex: 'billow', tile: [2, 1], scroll: [0.04, 0.06],
-        color: 0xff5a10, color2: 0xffe08a, core: 0.65, mode: 'flame', add: 0.55, I: 1.7, soft: 0.05 }),
+        color: 0xf2460a, color2: 0xffb848, core: 0.6, mode: 'flame', add: 0.3, I: 1.05, soft: 0.05 }),   // molten orange through the soft look (was 0xff5a10 ×1.7: cream)
       shape({ kind: 'disc', pos: P.setY(P.y + 0.06), r0: 0, r1: f.r * 1.04, dur: 2, grow: [1, 1], erode: [0.6, 0.6], tex: 'cells', tile: [2.2, 0.8], scroll: [0.008, 0.012],
         color: 0x1a1210, color2: 0x4a3226, mode: 'smoke', body: 0.95, core: 1, soft: 0.05 }),
+      G.elements?.flames?.patch?.({ pos: P, r: f.r }),   // low flames dancing on the pool (flame cards; same handle interface)
     ],
     steam: (f, P) => [
       shape({ kind: 'ring', pos: P.setY(P.y + 0.12), r0: f.r * 0.15, r1: f.r * 1.1, dur: 2, grow: [1, 1], erode: [0.22, 0.22], tex: 'billow', tile: [4, 1], scroll: [0.06, 0.18],

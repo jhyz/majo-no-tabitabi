@@ -1,6 +1,6 @@
 # 《魔女之旅》同人游戏：设计与维护文档
 
-本文是这个游戏的**主文档**。仓库从《月帷巫女》引擎分出，`docs/DESIGN.md` 和 `docs/api/*.md` 的前半部分描述的是那款游戏（神社、月帷、影祟、八系灵诀），只当引擎参考；两者冲突时以本文为准。各系统的接口细节仍在 `docs/api/<系统>.md`，每个文件末尾的 “as built / round” 小节是本作的新增内容。
+本文是这个游戏的**主文档**。AI 代理的工作守则另见仓库根目录的 [AGENTS.md](../AGENTS.md)，玩家反馈集中在 [Issue #7](https://github.com/shoal-rat/majo-no-tabitabi/issues/7)。仓库从《月帷巫女》引擎分出，`docs/DESIGN.md` 和 `docs/api/*.md` 的前半部分描述的是那款游戏（神社、月帷、影祟、八系灵诀），只当引擎参考；两者冲突时以本文为准。各系统的接口细节仍在 `docs/api/<系统>.md`，每个文件末尾的 “as built / round” 小节是本作的新增内容。
 
 ## 1. 铁律
 
@@ -8,7 +8,7 @@
 2. **存档向后兼容。** 存档键 `majo_no_tabitabi_episodes_save_v1` 不改；新增持久字段一律在 `src/core/save.js` 的 `defaultState()` / `defaultSettings()` 给默认值；改动剧情进度时要让旧存档能补齐（参考 `story.js start()` 的回填）。
 3. **测试不碰玩家存档。** 只用 `tools/play.mjs` 和 `tools/acceptance/*`（一次性无头浏览器档案，`autostart=1` 不写档）。不要用常规浏览器、内置浏览器、47327 端口或桌面版测。
 4. **原创与参考。** 动画官方剧照只作私下参考，放在仓库外的 `~/Claude_Test_1/majo-no-tabitabi-refs/`，永远不进仓库、不发布。对白、怪物、地标、关卡由本作原创；可以借鉴《旷野之息》的设计**方法**（三角形法则、引力、化学引擎三规则），不搬它的内容、名字和外观。
-5. **性能分档。** 新内容按 `G.quality`（`low/med/high`）缩放数量；静态几何合并（`bakeStatic` / 分块烘焙）、重复物实例化、远处换低模或剔除；手机默认 `low`。
+5. **性能分档。** 新内容按 `G.quality`（`low/med/high`）缩放数量；静态几何合并（`bakeStatic` / 分块烘焙）、重复物实例化、远处换低模或剔除；手机默认 `mobile`（掌上：至少 1080 行、30 帧，吃紧时先减景物再降到 900 / 720 行，设置「保持 1080」可锁定）。
 6. **系统间访问一律可选链**（`G.fx?.burst(...)`），`update()` 里不抛异常、不每帧分配对象。
 
 ## 2. 地图与剧情
@@ -49,6 +49,7 @@
   - **飞行环线**：3 条（海岬、古树、南谷），穿过第一个光环就开始计时，奖章与最佳成绩存 `G.state.wilds.rings`。奖章时间由验收脚本里的自动驾驶在巡航速度下标定。
   - **经济**：探索约给 2400 星屑和 6 级免费成长；`UPGRADES` 价格已下调，彻底探索的玩家一周目大约能到 15/20 级。
   - 都不进城市、故乡和剧情锚点的保护范围，不碰剧情步骤；验收：`node tools/acceptance/journey-activities.mjs`（`ACT_RINGS=all` 飞全部三条环线）。
+- **路边的托付**（`src/gameplay/errands*.js`，数据 `src/data/errands.js`，文字与对白 `gameplay.errands.*`，`docs/api/gameplay.md` “Errands round”）：五个旅人的小故事——骑帚送信并带回回信、追被风卷走的帽子（风魔法能把它兜回来）、用火点着牧羊人的炉子、用冰冻住断桥下的浅滩让南瓜车过河、把迷星手记念给城前路边祠的魔女听；有扫帚才出现，主线当前目标在 220 m 内时让路，状态存 `G.state.errands`，进行中的托付占用 HUD 目标栏，手记「旅途见闻」页有一栏；练习草地的土跑道是 `ROADS` 里的环形小路（`PRACTICE_TRACK`），道具在 `world/builders/practice-field.js`；验收 `node tools/acceptance/journey-errands.mjs`。
 
 ## 6. 验收与维护工具
 
@@ -60,6 +61,7 @@
 | `node tools/acceptance/journey-city-clouds.mjs` | 城墙被云遮住再出现、云隙光 |
 | `node tools/acceptance/journey-eclipse.mjs` | 渡湖日食与水面反射 |
 | `node tools/acceptance/journey-activities.mjs` | 野外探索：八类机关用真实法术解开、拾迷星、石堆、飞一条环线、存档往返、地图与手记页截图 |
+| `node tools/acceptance/journey-errands.mjs` | 路边委托：五个委托完整走完（对话、送信飞行、追帽子、生火、冻河、迷星），途中两次存档往返 |
 | `node tools/check-i18n.mjs src` | 代码里没有写死的中文 |
 | `node tools/dead-code.mjs` | 列出没被打包进游戏的源文件（清理引擎遗留用） |
 | `node tools/play.mjs --name x --script f.js [--mobile]` | 无头运行、截图、触屏模拟 |

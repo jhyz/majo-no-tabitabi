@@ -41,7 +41,8 @@ export const floraSystem = {
     const W = G.world;
     const Q = G.quality || { density: 1, viewDist: 2400, name: 'high' };
     const qn = Q.name || 'high';
-    const qk = qn === 'low' ? 0.72 : qn === 'med' ? 0.86 : 1;
+    const mob = !!Q.mobile; // phones (core/boot.js QUALITY.mobile): trees swap to their impostors sooner, shorter scenery reach
+    const qk = mob ? 0.62 : qn === 'low' ? 0.72 : qn === 'med' ? 0.86 : 1;
 
     // ---- models
     const species = []; // { key, def, model, batch, far }
@@ -206,9 +207,9 @@ export const floraSystem = {
     try { fields = createFields(G, countryPlan(W)); } catch (e) { G.reportError('flora:fields', e); }
 
     // ---- culling / packing state
-    const sceneryD = Math.min(950, Math.max(420, (Q.viewDist || 2400) * .4));
+    const sceneryD = mob ? 340 : Math.min(950, Math.max(420, (Q.viewDist || 2400) * .4));
     const farD = Math.min(1050, sceneryD + (qn === 'low' ? 105 : 130));
-    const shadowD = qn === 'low' ? 30 : qn === 'med' ? 42 : 52; // perf: fewer flora shadow casters on lower tiers
+    const shadowD = mob ? 26 : qn === 'low' ? 30 : qn === 'med' ? 42 : 52; // perf: fewer flora shadow casters on lower tiers
     // dithered cross-fades instead of chunk pops: near models fade out over the last FB metres while the far cards fade in
     const FB = 18;
     for (const sp of species) {
@@ -222,7 +223,7 @@ export const floraSystem = {
     // impostors fade in per instance over [near - FB, near] (near is packed in the species slot's fraction)
     if (farBatches.imp) farBatches.imp.setFade(0, FB, -2, farD);
     // impostor shadows: the far tier casts into the far cascade, and a shadow-only block covers [shadowD, near tier end)
-    const impShadowD = qn === 'low' ? 100 : qn === 'med' ? 150 : 170;
+    const impShadowD = mob ? 60 : qn === 'low' ? 100 : qn === 'med' ? 150 : 170; // mobile: its one cascade ends ~60 m out
     const visIds = new Int32Array(NC * NC), visD = new Float32Array(NC * NC), visOrder = [];
     const treeMin = new Float32Array(NC * NC), treeMax = new Float32Array(NC * NC);
     const last = { x: 1e9, y: 1e9, z: 1e9, fx: 0, fz: 0, frames: 0 };

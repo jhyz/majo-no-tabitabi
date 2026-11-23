@@ -13,6 +13,7 @@ import { roadDist } from './ground.js';
 import { tickFactories, makeStoneLantern, makeGreatLantern, makePaperLantern, makeTorii, makeChest, makeSignpost, makeRaceRing,
   makeBrazier, makeCrystalPillar, makeEmaRack, makeShrineBell } from './builders/factories.js';
 import { buildWaysides } from './builders/journey-waysides.js';
+import { buildPracticeField } from './builders/practice-field.js';
 import { buildLandmarks } from './builders/landmarks.js';
 import { buildTrialBasin } from './builders/trial-basin.js';
 import { buildJourneyRooms } from './builders/journey-rooms.js';
@@ -59,7 +60,7 @@ function lodTick(force) {
   for (const c of culls) c.obj.visible = _cam.distanceToSquared(c.pos) < c.d2;
   // perf: only casters near the shadow map (one ±70 m map around the focus) go into the shadow pass
   const f = G.player?.pos || _cam;
-  const R = G.quality?.name === 'low' ? 58 : G.quality?.name === 'med' ? 70 : SHADOW_R;
+  const R = G.quality?.mobile ? 44 : G.quality?.name === 'low' ? 58 : G.quality?.name === 'med' ? 70 : SHADOW_R; // mobile: its one cascade (±40 m)
   for (const c of casters) c.obj.castShadow = Math.hypot(c.c.x - f.x, c.c.z - f.z) - c.r < R;
   // the cheap far casters take over where the detailed ones stop, out to the far shadow cascade
   const FR = G.quality?.name === 'low' ? 0 : 260;
@@ -135,9 +136,12 @@ async function standIn(obj, dist, cut, statics) {
     let on = true;
     near = { get visible() { return on; }, set visible(v) { on = v; for (const m of parts) m.visible = v; } };
   }
-  lods.push({ id: (obj.name || 'obj') + '_standIn', near, far, c, r, isNear: true, near2: dist, cut });
+  const k = cullK(); // phones: stand-ins and cuts come sooner
+  lods.push({ id: (obj.name || 'obj') + '_standIn', near, far, c, r, isNear: true, near2: dist * k, cut: cut * k });
   return far;
 }
+// phones (core/boot.js QUALITY.mobile): small objects (chests, posts, props) hide / swap to stand-ins at 0.7x the distance
+const cullK = () => (G.quality?.mobile ? 0.7 : 1);
 const casters = [];
 const SHADOW_R = 80;
 function collectCasters(root) {
@@ -173,7 +177,7 @@ export const structuresSystem = {
        * Draw-call pass (docs/api/perf.md): hide a small static object beyond `dist` m from the camera (checked every
        * 8th frame). Only for objects nothing else shows / hides (or wrap them in a holder group first).
        */
-      cull(obj, pos, dist = 260) { culls.push({ obj, pos: pos.clone ? pos.clone() : new THREE.Vector3(pos.x, pos.y || 0, pos.z), d2: dist * dist }); },
+      cull(obj, pos, dist = 260) { dist *= cullK(); culls.push({ obj, pos: pos.clone ? pos.clone() : new THREE.Vector3(pos.x, pos.y || 0, pos.z), d2: dist * dist }); },
       /**
        * Draw-call pass: a small static object (already in the scene, final transform) swaps to a merged stand-in of
        * two draws (lit + glow, material colours in vertex colours, no simplification) beyond `dist` m, and is hidden
@@ -185,14 +189,15 @@ export const structuresSystem = {
       },
     };
     G.structures = S;
-    NEAR = G.quality?.name === 'low' ? 120 : G.quality?.name === 'med' ? 145 : 170;
-    BLOCK_NEAR = G.quality?.name === 'low' ? 55 : G.quality?.name === 'med' ? 75 : 95;
+    // phones (core/boot.js QUALITY.mobile): places and city blocks swap to their far versions sooner
+    NEAR = G.quality?.mobile ? 100 : G.quality?.name === 'low' ? 120 : G.quality?.name === 'med' ? 145 : 170;
+    BLOCK_NEAR = G.quality?.mobile ? 44 : G.quality?.name === 'low' ? 55 : G.quality?.name === 'med' ? 75 : 95;
     const ctx = {
       S,
       place(id, data) { S.places[id] = Object.assign(S.places[id] || {}, data); return S.places[id]; },
       tick(fn) { tickers.push(fn); },
       /** Hide a small object beyond `dist` m from the camera. */
-      cull(obj, pos, dist = 260) { culls.push({ obj, pos: pos.clone ? pos.clone() : new THREE.Vector3(pos.x, pos.y || 0, pos.z), d2: dist * dist }); },
+      cull(obj, pos, dist = 260) { dist *= cullK(); culls.push({ obj, pos: pos.clone ? pos.clone() : new THREE.Vector3(pos.x, pos.y || 0, pos.z), d2: dist * dist }); },
     };
     // Boot time slices (docs/api/perf.md "Boot and loading"): every builder is async and calls `await ctx.step(label)`
     // between its pieces (sections, houses, the bake's merge and each merged mesh's shading); step yields once the slice
@@ -210,7 +215,7 @@ export const structuresSystem = {
       await p;
       tRes = performance.now();
     };
-    for (const [name, fn] of [['waysides',buildWaysides],['trialBasin',buildTrialBasin],['homes',buildJourneyRooms],['peacefulCountry',buildEastTown],['landOfMages',buildBellcrown],['landmarks',async(c)=>{S.landmarks=await buildLandmarks(c);}]]) {
+    for (const [name, fn] of [['waysides',buildWaysides],['trialBasin',buildTrialBasin],['homes',buildJourneyRooms],['peacefulCountry',buildEastTown],['landOfMages',buildBellcrown],['practiceField',buildPracticeField],['landmarks',async(c)=>{S.landmarks=await buildLandmarks(c);}]]) {
       try { await fn(ctx); } catch (e) { G.reportError('structures:' + name, e); }
       await ctx.step(name + ':done');
     }

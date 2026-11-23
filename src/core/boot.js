@@ -10,7 +10,7 @@ import { world, onDeform } from '../world/ground.js';
 import { veilAt, moonDirAt, daylightAt, SUN_DIR } from '../world/veil.js';
 import * as i18n from './i18n.js';
 import { t, setLocale } from './i18n.js';
-import { createDynRes } from '../render/dynres.js';
+import { createDynRes, createPacer } from '../render/dynres.js';
 import { pickQuality, mobileDevice } from '../render/gpubench.js';
 import { mark, addSpan, sliceDone } from './boottime.js';
 import { compileWorld, warmDraw } from '../render/warmup.js';
@@ -23,11 +23,23 @@ export const QUALITY = {
   // GPU pass (docs/api/perf.md "GPU pass"): everything of 'high' (systems see name 'high') at pixel ratio 1.25 — the step
   // that holds 60 fps on a machine of the M5 laptop's class, where 'high' at 1.5 runs ~48 fps. Settings key 'highfast'.
   highfast: { name: 'high', key: 'highfast', pixelRatio: 1.25, shadowSize: 2048, bloom: true, density: 1, particles: 1, viewDist: 2400 },
+  // Phones and tablets (mobile round 2, docs/api/perf.md "Phones"): systems see name 'low' and inherit every low cut;
+  // `mobile: true` adds the handheld cuts a 6-inch screen cannot show (shorter view, sparser grass / trees / crowds,
+  // one shadow cascade, no sun shafts, cheaper clouds, a cheaper water mirror) and pays for a sharp picture: at least
+  // minLines rendered lines on the short side (1080: pixel ratio ~2.77 on a 390-px-tall phone; the device's own ratio
+  // when its screen has fewer lines). Dynamic resolution never goes below it: it sheds scene cost instead ('perf:lite').
+  // The loop is paced at 30 fps unless the device clearly holds 60 (render/dynres.js createPacer). Settings key 'mobile'.
+  mobile: { name: 'low', key: 'mobile', mobile: true, minLines: 1080, pixelRatio: 1, shadowSize: 1024, bloom: false, density: 0.35, particles: 0.4, viewDist: 800 },
 };
 
 /** Dynamic-resolution steps as fractions of each tier's own pixel ratio (render/dynres.js). Light r3: finer and relative,
  *  so a pixel-ratio-1 display also gets small steps (1 -> 0.92 -> 0.85 -> 0.77; it used to jump straight to 0.85). */
 const DYNRES_STEPS = { high: [0.92, 0.85, 0.77], med: [0.9, 0.8], low: [0.88, 0.76] };
+/** Phones / tablets (any tier with minLines): shed scene cost first ('perf:lite' 1, 2), then render fewer lines (900, 720)
+ *  only when lite 2 is on and frames stay over 40 ms (< 25 fps at the 30 cap) for 4 s; settings.keep1080 stops at lite 2.
+ *  Recovery climbs back one step per quiet spell (8 s+, doubling if it pumps): lines first, then the lite levels. */
+const MOB_LINES = [0, 0, 0, 900, 720]; // 0 = the tier's own lines (>= 1080)
+const MOB_LITE = [0, 1, 2, 2, 2];
 
 function showFatal(msg) {
   const el = document.getElementById('fatal');
@@ -68,12 +80,14 @@ async function bootInner(systems) {
   document.title = t('core.title');
   i18n.onLocaleChange(() => { document.title = t('core.title'); });
   { const bt = document.querySelector('#boot .t'); if (bt) bt.textContent = t('core.title'); }
-  // phones / tablets start light (gpubench.js mobileDevice); a tier the probe picked on one before is picked again,
-  // a tier the player chose is kept
+  // phones / tablets get the 'mobile' tier (gpubench.js mobileDevice); a tier picked automatically before (the desktop
+  // probe, or the old phone pick 'low') is picked again, a tier the player chose in settings is kept (the settings panel
+  // clears qualityAuto when the player picks one)
   const mobile = mobileDevice();
   const qa = G.settings.qualityAuto;
-  const autoStale = mobile && G.save.qualityStored && qa && typeof qa === 'object' && !qa.mobile && qa.tier === G.settings.quality;
+  const autoStale = mobile && G.save.qualityStored && qa && typeof qa === 'object' && qa.tier === G.settings.quality && qa.tier !== 'mobile';
   if (G.params.quality) G.settings.quality = G.params.quality;
+  else if (mobile && !G.save.qualityStored && (G.params.autostart || G.params.nosave)) G.settings.quality = 'mobile'; // test runs on a phone: its tier, nothing written
   else if (((!G.save.qualityStored || autoStale) && !G.params.autostart && !G.params.nosave) || G.params.qbench) {
     // first start: pick the tier from a short GPU probe and remember it (the settings menu still overrides it)
     const pick = pickQuality({ mobile });
@@ -84,6 +98,8 @@ async function bootInner(systems) {
     if (G.params.qbench) console.log('[qbench] ' + JSON.stringify(G.settings.qualityAuto));
   }
   G.quality = QUALITY[G.settings.quality] || QUALITY.high;
+  // a phone / tablet renders at least 1080 lines on any tier the player picks (the mobile tier already does)
+  if (mobile && !G.quality.minLines) G.quality = { ...G.quality, minLines: 1080 };
   if (G.params.autostart || G.params.nosave) G.save.disabled = true;
 
   mark('settings');
@@ -92,7 +108,11 @@ async function bootInner(systems) {
   // antialias: false — every frame reaches the canvas as a full-screen quad from the post pipeline (which has its own
   // MSAA scene target + SMAA / FXAA), so a multisampled default framebuffer only cost a 4x resolve per frame (perf pass).
   // ?pr=<n> overrides the tier's pixel-ratio cap (perf harness: resolution scaling tests)
-  const prCap = Number(G.params.pr) > 0 ? Number(G.params.pr) : G.quality.pixelRatio;
+  // phones / tablets: at least minLines lines on the short side (rounded up; the device ratio caps it, a tier's own
+  // higher ratio wins)
+  const short = Math.max(1, Math.min(window.innerWidth, window.innerHeight));
+  const linesPr = G.quality.minLines ? Math.max(G.quality.pixelRatio, Math.ceil(G.quality.minLines / short * 100) / 100) : G.quality.pixelRatio;
+  const prCap = Number(G.params.pr) > 0 ? Number(G.params.pr) : linesPr;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, prCap));
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -102,15 +122,37 @@ async function bootInner(systems) {
   // dynamic resolution safety net (docs/api/perf.md): ?dynres=0 or settings.dynRes === false turns it off
   {
     const start = renderer.getPixelRatio();
-    const steps = [start, ...(DYNRES_STEPS[G.quality.name] || DYNRES_STEPS.high).map((f) => Math.round(start * f * 100) / 100)];
+    const lines0 = Math.floor(short * start); // rendered lines at the top step
+    const mobSteps = !!G.quality.minLines;
+    const steps = mobSteps ? MOB_LINES.map((l) => (l && l < lines0 ? Math.ceil(l / short * 1000) / 1000 : start))
+      : [start, ...(DYNRES_STEPS[G.quality.key] || DYNRES_STEPS[G.quality.name] || DYNRES_STEPS.high).map((f) => Math.round(start * f * 100) / 100)];
     // the post pipeline renders at the lower ratio and its last pass upscales to the unchanged canvas (no canvas
     // reallocation, no 'resize' storm); without a pipeline the canvas itself is resized
-    G.dynRes = createDynRes(G, { steps, onResize: (pr) => {
-      if (G.post?.setRenderScale) { G.post.setRenderScale(pr === steps[0] ? null : pr); return; }
-      renderer.setPixelRatio(pr);
-      G.events.emit('resize', { w: window.innerWidth, h: window.innerHeight });
-    } });
+    G.perfLite = 0;
+    G.dynRes = createDynRes(G, {
+      steps,
+      stepRule: mobSteps ? (i) => (MOB_LINES[i] ? { over: 40, hold: 4 } : null) : null,
+      onResize: (pr, i) => {
+        // phones: lite levels (water mirror, far grass, detail + cloud shadows: 'perf:lite' handlers in water.js /
+        // grass.js / sky.js), then fewer lines through the pipeline's render scale (the canvas keeps its size)
+        if (mobSteps) {
+          const lite = MOB_LITE[i] ?? 2;
+          if (lite !== G.perfLite) { G.perfLite = lite; G.events.emit('perf:lite', { level: lite }); }
+        }
+        if (G.post?.setRenderScale) { G.post.setRenderScale(pr === steps[0] ? null : pr); return; }
+        renderer.setPixelRatio(pr);
+        G.events.emit('resize', { w: window.innerWidth, h: window.innerHeight });
+      },
+    });
     G.dynRes.enabled = G.params.dynres !== '0' && G.params.perf !== '0' && G.settings.dynRes !== false;
+    if (mobSteps) { // 「保持 1080」: lite levels only, the lines never drop
+      const keep = () => { G.dynRes.limit = G.settings.keep1080 ? 2 : Infinity; };
+      keep(); G.events.on('settings:changed', keep);
+    }
+    // frame pacing (render/dynres.js createPacer): the mobile tier tries 60, keeps 30 unless the device clearly holds 60;
+    // ?fps=30|60|0 forces a cap (0 = the display rate) on any tier
+    const fp = G.params.fps;
+    G.pace = createPacer(G, fp !== undefined && fp !== '' ? { cap: Number(fp) } : { auto: !!G.quality.mobile || mobile });
   }
 
   mark('renderer');
@@ -293,6 +335,8 @@ function startLoop(early = []) {
   const T = G.time;
   function frame(now) {
     requestAnimationFrame(frame);
+    if (G.pace && !G.pace.gate(now)) return; // frame limiter (30 fps cap): this display refresh is skipped
+    const t0 = performance.now();
     const rdt = Math.min(Math.max((now - last) / 1000, 0), 0.05);
     last = now;
     let scale = T.scale * (T.slow > 0 ? T.slow : 1);   // T.slow: duel slow-motion beats (G.fx.duel, eased back to 1)
@@ -332,7 +376,9 @@ function startLoop(early = []) {
       try { s.lateUpdate(s.pausable === false ? rdt : dt, rdt); } catch (e) { G.reportError('late:' + s.name, e); }
     }
     try { G.renderFrame(); } catch (e) { G.reportError('render', e); }
+    G.debug.cpuMs += (performance.now() - t0 - G.debug.cpuMs) * 0.05; // script ms per frame (updates + render submit), smoothed
     G.dynRes?.update(rdt);
+    G.pace?.update(rdt);
     if (fc?.view && G.debug.fixedCam === fc) { G.camera.position.copy(fc.gp); G.camera.quaternion.copy(fc.gq); G.camera.updateMatrixWorld(); }
     G.input.endFrame();
     G.save.tick();
@@ -344,6 +390,7 @@ function startLoop(early = []) {
 function installDebug() {
   G.debug = {
     fps: 0,
+    cpuMs: 0,
     fixedCam: null,
     /** Move the player (or free camera) to (x,z); y defaults to just above the ground. */
     teleport(x, z, y) {

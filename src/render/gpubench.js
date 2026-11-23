@@ -4,9 +4,9 @@
 // (Apple M5 laptop, ~REF ms): that machine gets 'highfast' (all of 'high' at pixel ratio 1.25, 60 fps there);
 // 'high' (pixel ratio 1.5) only a GPU about 1.4x faster.
 // Software renderers (SwiftShader / llvmpipe) always get 'low'.
-// Phones and tablets (mobileDevice()) start on 'low' without the probe: a 0.1 s burst says little about a handheld GPU
-// that throttles after minutes in the hand, and 'low' (pixel ratio 1, dynamic resolution on) keeps them cool and smooth.
-// The settings menu still raises it.
+// Phones and tablets (mobileDevice()) get the 'mobile' tier without the probe: a 0.1 s burst says little about a handheld
+// GPU that throttles after minutes in the hand. 'mobile' (core/boot.js QUALITY) = every 'low' cut plus the handheld cuts,
+// a sharper pixel ratio (~0.75 MP) and a 30 fps cap unless the device clearly holds 60. The settings menu still changes it.
 
 const REF = 0.42; // ms per megapixel draw on the reference machine (Apple M5 laptop, measured 0.41–0.43; perf.md "auto-pick")
 
@@ -35,10 +35,10 @@ export function mobileDevice() {
   } catch (e) { return false; }
 }
 
-/** Returns { tier: 'high'|'highfast'|'med'|'low', score, renderer, mobile? } (score: ms per megapixel draw; lower is faster). */
+/** Returns { tier: 'high'|'highfast'|'med'|'low'|'mobile', score, renderer, mobile? } (score: ms per megapixel draw; lower is faster). */
 export function pickQuality({ mobile = false } = {}) {
   const out = { tier: 'high', score: null, renderer: '' };
-  if (mobile) { out.tier = 'low'; out.mobile = true; return out; }
+  if (mobile) { out.tier = 'mobile'; out.mobile = true; return out; }
   let gl = null;
   try {
     const cv = document.createElement('canvas');

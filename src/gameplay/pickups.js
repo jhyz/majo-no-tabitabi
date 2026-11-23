@@ -68,6 +68,7 @@ export function createPickups(api) {
       const inst = makeInstanced(proto, CAP[look], { castShadow: false, name: 'gp:pickup:' + look });
       G.scene.add(inst.group);
       pools[look] = inst;
+      for (const im of inst.meshes) im.count = 0;
       for (let i = CAP[look] - 1; i >= 0; i--) free[look].push(i);
     }
   }
@@ -116,10 +117,16 @@ export function createPickups(api) {
     if (slot === undefined) { const old = live.find((p) => p.look === look); if (!old) return null; release(old); slot = free[look].pop(); }
     return slot;
   }
+  // draw only up to the live high-water slot (instances past it would be zero-scale triangles still sent to the GPU)
+  const hi = { star: 0, heart: 0, orb: 0 };
+  function setHi(look, n) { hi[look] = n; for (const im of pools[look].meshes) im.count = n; }
   function release(p) {
     const i = live.indexOf(p); if (i >= 0) live.splice(i, 1);
     if (p.look === 'food') { if (p.obj) { p.obj.removeFromParent(); const j = foodPool.indexOf(p.obj); if (j >= 0) foodPool.splice(j, 1); } }
-    else { pools[p.look]?.hide(p.slot); free[p.look].push(p.slot); }
+    else {
+      pools[p.look]?.hide(p.slot); free[p.look].push(p.slot);
+      if (p.slot + 1 >= hi[p.look]) { let n = 0; for (const q of live) if (q.look === p.look && q.slot + 1 > n) n = q.slot + 1; setHi(p.look, n); }
+    }
   }
 
   /** ★ spawnPickup(kind, pos, n): stardust n = amount (split into up to 8 pieces); others n = pieces. */
@@ -144,6 +151,7 @@ export function createPickups(api) {
       };
       if (def.look === 'food') { p.obj = foodModel(def.item); G.scene.add(p.obj); foodPool.push(p.obj); }
       live.push(p);
+      if (def.look !== 'food' && slot + 1 > hi[def.look]) setHi(def.look, slot + 1);
       out.push(p);
       place(p, 0);
     }

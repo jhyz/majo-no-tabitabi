@@ -617,8 +617,8 @@ export async function buildBellcrown(ctx) {
   const rocks = wallRocks(site);
   await site.bakeBlocksSliced(64, ctx.step);
   CITY_LIFE.ready = true;
-  const lite = G.quality?.name === 'low';
-  ctx.place('landOfMages', { group: site.baked, blocks: site.blocks, site, houses: count, props, rocks, why: layoutHouses.why, life: CITY_LIFE, blockNear: lite ? 48 : 80, farCell: lite ? 1.0 : 0.7 });
+  const lite = G.quality?.name === 'low', mob = !!G.quality?.mobile; // phones (QUALITY.mobile): coarser block stand-ins, sooner
+  ctx.place('landOfMages', { group: site.baked, blocks: site.blocks, site, houses: count, props, rocks, why: layoutHouses.why, life: CITY_LIFE, blockNear: mob ? 40 : lite ? 48 : 80, farCell: mob ? 1.3 : lite ? 1.0 : 0.7 });
   riders(ctx);
   mageResidents(ctx);
 }

@@ -576,7 +576,8 @@ export function createGrass(G) {
       { S: 4.0, rIn: 28, rOut: 80, B: 22, segs: 1, wk: 4.2, fi: 8, fo: 34, last: 1 },
     ],
   }[qn] || [];
-  const outer = qn === 'low' ? 136 : qn === 'med' ? 169 : 207;
+  const mob = !!q.mobile; // phones (core/boot.js QUALITY.mobile): the painted ground carries the far field sooner
+  const outer = mob ? 104 : qn === 'low' ? 136 : qn === 'med' ? 169 : 207;
   const end = RINGS[RINGS.length-1];
   if(end) {
     end.last=0;
@@ -623,7 +624,7 @@ export function createGrass(G) {
   for (const r of RINGS) mk(patchGeometry(Math.max(8, Math.round(r.B * dK(r) * .95)), r.segs, rng), false, r);
   // The outer spray has wider petals and fewer triangles per floret, so its
   // colour patches remain readable from above the grass.
-  const flowerRings = qn === 'low' ? [[2.9,21,0,9],[4.6,75,12,24],[7.9,136,51,46]] :
+  const flowerRings = mob ? [[3.1,19,0,8],[5.0,60,10,20],[8.5,104,44,40]] : qn === 'low' ? [[2.9,21,0,9],[4.6,75,12,24],[7.9,136,51,46]] :
     qn === 'med' ? [[2.5,25,0,9],[4.0,94,16,28],[7.0,169,66,52]] :
     [[2.2,29,0,10],[3.8,112,19,32],[6.8,207,80,58]];
   for (let i=0;i<flowerRings.length;i++) {
@@ -650,6 +651,10 @@ export function createGrass(G) {
     } catch (err) { G.reportError?.('grass:blast', err); }
   });
 
+  // phones shedding cost (core/boot.js 'perf:lite' level >= 1): the outermost grass and flower rings go; the painted
+  // ground carries that band
+  let liteHide = false;
+  if (mob) G.events?.on?.('perf:lite', (e) => { liteHide = e?.level >= 1; });
   const craters = []; // { x, z, r, t, life }
   const scars = [];   // persistent bare discs from api.scarFeed
   let scarAge = Infinity, scarX = 0, scarZ = 0;
@@ -720,7 +725,7 @@ export function createGrass(G) {
       const agl=cam.position.y-gh;
       shared.gAerial.value=1-THREE.MathUtils.smoothstep(agl,130,220);
       const show=shared.gAerial.value>.001;
-      for (const m of meshes) m.visible = show;
+      for (const m of meshes) m.visible = show && !(liteHide && m.userData.ring.rOut >= outer);
       for (let i = craters.length - 1; i >= 0; i--) { craters[i].t += dt; if (craters[i].t > craters[i].life) craters.splice(i, 1); }
       const cv = shared.gCraters.value;
       let ci = 0;

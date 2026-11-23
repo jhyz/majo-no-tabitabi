@@ -131,6 +131,7 @@ export function createLife(ctx) {
       h = {
         id: i, key: species[S.sp[i]].key, pos: new THREE.Vector3(S.x[i], S.y[i], S.z[i]),
         height: m.height * S.s[i], radius: Math.max(m.crown.rx, m.crown.rz) * S.s[i],
+        crownY: m.crown.cy * S.s[i], crownRY: m.crown.ry * S.s[i],   // crown centre above the foot / half height (fire look)
         get burning() { return !!reactors.get(i)?.burning; }, get charred() { return S.state[i] === 2; }, get felled() { return S.state[i] === 3; },
       };
       handles.set(i, h);

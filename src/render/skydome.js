@@ -303,6 +303,7 @@ void main() {
   #include <colorspace_fragment>
 }`;
 
+// quality: 'low' | 'med' | 'high' | 'mobile' (phones, core/boot.js QUALITY.mobile: fewer cloud steps on a smaller layer)
 export function createSkyDome(quality = 'high') {
   const lowRT = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, count: 3, depthBuffer: false });
   lowRT.texture.name = 'mvSkyLow';
@@ -323,7 +324,7 @@ export function createSkyDome(quality = 'high') {
   };
   const opts = { uniforms, vertexShader: VERT, side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false };
   const highMat = new THREE.ShaderMaterial({ name: 'mvSky', fragmentShader: FRAG_HIGH, ...opts });
-  const lowMat = new THREE.ShaderMaterial({ name: 'mvSkyLow', defines: { CLOUD_STEPS: quality === 'low' ? 10 : quality === 'med' ? 15 : 21 }, fragmentShader: FRAG_LOW, ...opts, toneMapped: false });
+  const lowMat = new THREE.ShaderMaterial({ name: 'mvSkyLow', defines: { CLOUD_STEPS: quality === 'mobile' ? 8 : quality === 'low' ? 10 : quality === 'med' ? 15 : 21 }, fragmentShader: FRAG_LOW, ...opts, toneMapped: false });
   const geo = new THREE.SphereGeometry(3000, 48, 24);
   const mk = (mat, name) => {
     const m = new THREE.Mesh(geo, mat);
@@ -336,7 +337,7 @@ export function createSkyDome(quality = 'high') {
   lowScene.add(lowMesh);
   // Water can reflect directions behind the viewer. Integrate the same volume
   // around the water plane and retain it while the main camera turns.
-  const probeWidth = quality === 'low' ? 128 : quality === 'med' ? 192 : 256;
+  const probeWidth = quality === 'mobile' ? 96 : quality === 'low' ? 128 : quality === 'med' ? 192 : 256;
   const probe = new THREE.WebGLRenderTarget(probeWidth, probeWidth/4, { type: THREE.HalfFloatType, depthBuffer: false });
   probe.texture.wrapS=THREE.RepeatWrapping;
   const probeEye = new THREE.Vector3(), probeScene = new THREE.Scene();
@@ -354,7 +355,7 @@ export function createSkyDome(quality = 'high') {
     /** Place both domes on the camera and render the half-resolution layer. */
     renderLow(renderer, camera, renderSize) {
       if (renderSize) size.copy(renderSize); else renderer.getDrawingBufferSize(size);   // internal size under dynamic resolution
-      const cap = quality === 'low' ? 400 : quality === 'med' ? 576 : 800;
+      const cap = quality === 'mobile' ? 320 : quality === 'low' ? 400 : quality === 'med' ? 576 : 800;
       const scale = Math.min(.5, cap / Math.max(size.x, 1));
       const w = Math.max(1, Math.ceil(size.x * scale)), h = Math.max(1, Math.ceil(size.y * scale));
       if (lowRT.width !== w || lowRT.height !== h) lowRT.setSize(w, h);

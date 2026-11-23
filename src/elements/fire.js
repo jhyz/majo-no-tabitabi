@@ -229,6 +229,8 @@ export function createFire(E) {
     },
     /** Heat (≈ burning cells, weighted) on the coarse grid around (x, z). */
     heatAt(x, z) { const h = heat.get(key(Math.floor(x / HEAT_CELL), Math.floor(z / HEAT_CELL))); return h ? h.n : 0; },
+    /** The coarse heat cell holding (x, z) ({ n, sx, sy, sz, … }; flames.js stores the wind there) or undefined. */
+    heatCell(x, z) { return heat.get(key(Math.floor(x / HEAT_CELL), Math.floor(z / HEAT_CELL))); },
     addHeat,
     update(dt) {
       if (dt <= 0) return false;

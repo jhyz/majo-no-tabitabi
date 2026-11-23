@@ -183,7 +183,7 @@ export function createDialogue(story) {
         gesture(who, ln.act, ctx, text);
         mouth(who, text, true);
         if (who !== 'dango' && who !== 'narrator') frame(ctx, who);
-        const name = who === 'narrator' ? '' : fill(t('story.name.' + who), ctx.vars);
+        const name = who === 'narrator' ? '' : fill(G.npcs?.nameOf?.(who) ?? t('story.name.' + who), ctx.vars);   // roadside travellers name themselves
         const choices = Array.isArray(ln.choices) ? ln.choices.map((c) => fill(c.text, ctx.vars)) : undefined;
         let r;
         try { r = await G.ui.say({ name, text, portrait: who === 'narrator' ? null : true, choices, side: who === 'elaina' || who === 'dango' ? 'left' : 'right' }); }

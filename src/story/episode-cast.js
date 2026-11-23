@@ -173,22 +173,25 @@ export function createCast(story) {
       rig.update(dt);
     }
   }
+  // roadside travellers (gameplay/errands.js) speak through the same dialogue: unknown ids are asked there
+  const extra = (id) => (byId[id] ? null : G.errands?.npc?.(id) || null);
   return {
     list,
     stage,
     update,
     airPose,
     get: (id) => byId[id],
-    actor: (id) => byId[id]?.actor,
-    isPresent: (id) => !!byId[id]?.actor,
-    posOf: (id, out) => (byId[id]?.anchor ? out.copy(byId[id].pos) : null),
+    actor: (id) => byId[id]?.actor ?? extra(id)?.actor ?? null,
+    isPresent: (id) => !!(byId[id]?.actor ?? extra(id)?.actor),
+    posOf: (id, out) => (byId[id] ? (byId[id].anchor ? out.copy(byId[id].pos) : null) : extra(id)?.posOf(out) ?? null),
+    nameOf: (id) => (byId[id] ? undefined : G.errands?.nameOf?.(id)),
     beginTalk() {},
     endTalk() {},
     gesture(id, name) {
-      byId[id]?.actor?.play(name, { restart: true });
+      (byId[id]?.actor ?? extra(id)?.actor)?.play(name, { restart: true });
     },
     speaking(id, on, text) {
-      const a = byId[id]?.actor;
+      const a = byId[id]?.actor ?? extra(id)?.actor;
       if (a) {
         if (on) a.say(text);
         else a.speaking = false;

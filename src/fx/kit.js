@@ -8,6 +8,7 @@
 //   sun — radiant petals + talisman (glyph) circle.   moon — crescent arcs + mirror shards.
 import {airFrostKit} from './air-frost.js';
 import * as THREE from 'three';
+import { G } from '../core/game.js';
 
 const TAU = Math.PI * 2;
 const _p = new THREE.Vector3(), _u = new THREE.Vector3(), _f = new THREE.Vector3(), _t = new THREE.Vector3();
@@ -58,6 +59,9 @@ export function makeKit(env) {
     },
     // ---- fire ------------------------------------------------------------------------------------------------------
     tongues(pos, n, r, h, { dur = 0.7, I = 1.5, spread = 1, col = 0xff6a14, rim = 0xffe7a0, delay = 0 } = {}) {
+      // fire-coloured tongues are flame cards (elements/flames.js); other colours keep the painted lathe
+      const F = G.elements?.flames;
+      if (F && ((col >> 16) & 255) > 200 && (col & 255) < 120) { F.lick(pos, { n, r, h, dur: dur * 1.15, heat: Math.min(1.1, I / 1.4), spread, delay }); return; }
       n = Math.max(1, Math.round(n * q()));
       for (let i = 0; i < n; i++) {
         const a = Math.random() * TAU, d = Math.sqrt(Math.random()) * r * spread;
@@ -123,6 +127,7 @@ export function makeKit(env) {
         color: col, color2: 0xffffff, mode: 'glow', add: 0.55, I: 1.1, soft: 0.06, body: 0.5 });
     },
     whirl(pos, r, h, { dur = 1.2, col = 0xd6ffe6, twist = 4, I = 1.3, flame = false } = {}) {
+      if (flame && G.elements?.flames) { G.elements.flames.whirl({ pos, R: r, H: h * 1.6, dur }); return; }   // a fire whirl of flame cards
       if (flame) {   // a fire whirl: a twisting funnel of painted flame (dark-red heart, bright rim) inside a streaked air cone
         add({ kind: 'cone', pos, r0: r * 0.2, r1: r * 0.7, h, dur, grow: [0.5, 1.05], erode: [0.12, 0.95], tex: 'billow', tile: [2, 1.2], scroll: [2.2, -1.8], twist: twist * 1.4,
           color: 0xd8340a, color2: 0xffd27a, core: 0.55, mode: 'flame', add: 0.35, I: I * 1.1, soft: 0.04, body: 0.95 });

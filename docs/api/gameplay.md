@@ -240,5 +240,63 @@ with identical `G.state.wilds` and restored visuals, screenshots of the map and 
   pass through a puzzle object far from the start. Tests call `G.physics.syncStatics()`.
 - The drift chest has no collider (it moves); only area casts (ice big, or ice on the pool floor) freeze the pool
   reliably — the small ice lance must land in the pool.
-- No wayside errands / lost-hat chase yet (the sky lantern is the only chase).
+- Wayside errands and the lost-hat chase came in the errands round (below).
 - Star tops on the giant tree / oak crowns are fixed offsets (49 m / 15 m), not measured from the plant models.
+
+## Errands round: travellers along the road (2026-11-23)
+Files: `src/gameplay/errands.js` (core: state, talks, hat chase, ford, stove, providers), `errands-npc.js` (travellers),
+`errands-props.js` (hat, easel, stove, cart, ice sheet, seat), `src/data/errands.js` (ids, places, looks, rewards, hat
+path, ford point), `src/locales/zh-CN/gameplay.errands.js` (every word, dialogue scripts as data under `dlg.*`). Created in
+`gameplaySystem.init` right after `G.wilds` (`G.errands = createErrands()`), `start()` / `update(dt)` from the gameplay
+system. Placements reuse `resolveAt` of wilds.js (landmark-local records).
+
+**Player experience**
+- Five travellers at landmarks along the route, out once she has the broom (`abilities.broom`; the star witch also needs
+  `majo_named`). A traveller near her shows on the compass (`setMarkers(…, 'errand')`), once met on the map. Talking
+  (interact, also from the broom / touch) plays a script; the first choice accepts. Needs a spell she lacks (fire, ice)
+  → the traveller only tells the trouble.
+  - `er_letter` 隔着荒原的信 — Marta (north farm, moor) → Greta (west farm, vale) → the one-line reply back. Keepsake 母亲的面包方子.
+  - `er_hat` 风里的帽子 — the painter Otto under the swing oak; a gust in the talk tears his felt hat off. It rides the wind
+    along `HAT.path` (14–34 m up, 7 m/s, shies sideways when she reaches for it, leaf trail), and settles in the
+    tallest moor snag if nobody catches it. A wind spell whose line passes within ~3 m catches it and carries it back
+    toward her for 1.6 s (also knocks it out of the snag). Touch it (3.3 m on the broom) → return it. Keepsake 荒原速写.
+  - `er_stove` 牧羊人的炉子 — Hanna at the shepherd hut; fire on the iron stove by the door (kind 'lantern' reactor).
+  - `er_ford` 断桥边的南瓜车 — the carter Tomas below the broken bridge; ice on the ford (a 'water' reactor spanning the
+    brook, crossing line square to `eastbrook`, water edges sampled from the terrain) lays an ice sheet + walkable
+    platform for 45 s; he pushes the cart across (held frozen while he crosses), thanks on the far bank.
+  - `er_stars` 不肯落下的星星 — Ilse at the city-road shrine; once 6 stray stars are found she hears the note's first line
+    and knows who wrote it (the careless witch's note, wilds.js). Keepsake 空星瓶.
+- An accepted errand owns the HUD tracker within `TRACK_NEAR` (700 m) of its next target (always once both episodes
+  are done; the flying hat always) — `quests.js syncUi` asks `G.errands.tracker()` first. Rewards: 60–90 星屑 + bread
+  (dango) / produce via `G.wilds.grant`. Journal: a 「路边的托付」 row on the 旅途见闻 page (objectives, done lines, keepsakes).
+- Never in story places: a traveller with no errand under way steps aside while the current main step's target is
+  within `ERRAND_CLEAR` (220 m); talks only in `G.mode === 'play'`, not during a race, a spar or story busy.
+
+**API** (`G.errands`): `ready`, `markers()`, `journal()` → `{ list: [{ id, known, state, title, desc, objective, place }],
+keeps, done, active, of }`, `tracker()`, `state(id)`, `step(id)`, `isOpen(id)`, `target(id)`, `accept(id)`, `advance(id)`,
+`complete(id)`, `talk(npcId)`, `npc(id)` / `nameOf(id)` (story/episode-cast.js and dialogue.js fall back to these for ids
+they do not know), `hat` ({ state: head|fly|stuck|held|home, pos, landing, launch(), gust(pos, dir) }), `ford` ({ frozen,
+crossing, across, mid, start, end }), `stove`, `travellers`. Dialogue hook `errand:hatOff`.
+Events: `errand:accepted` {id}, `errand:step` {id, step}, `errand:done` {id}.
+
+**State** `G.state.errands` (defaultState): `list` { id: { s: 'active'|'done', step, v } }, `keep` { recipe|sketch|jar: 1 },
+`seen` { traveller: 1 }. A flying hat / the ice / a crossing are physical: a reload puts the hat in its snag and the
+carter on the near bank.
+
+**Practice field** (B): `PRACTICE_TRACK` in data/world.js (oval 22 × 15.5 m round the practice anchor) is a ROADS loop
+`practice_track`: the terrain shader paints it as a dirt path with ruts and the grass shader keeps blades off it and
+thins its shoulders. The practice settlement became dirt kind 3 with a 3 m worn spot (it was a 12 m stone plaza, shader.js
+SETTLE). `world/builders/practice-field.js` adds three targets (south), four slalom posts (west, inside), a bench and a
+broom rack (east), with colliders; the ring course (episode-scenes.js flightOffsets) flies over the north curve.
+
+**Tests**: `node tools/acceptance/journey-errands.mjs` (virtual clock): all five end to end through the real interact +
+dialogue, the letter legs flown on the broom, the hat chased by a steering bot (a wind cast pulls it out of the snag),
+stove by `G.spells.cast('fire')`, ford by `cast('ice','big')` (stands on the ice, cart crosses), stars by touch;
+save → reload twice mid-errand (letter + ford half done; hat in flight → in its snag) and at the end; journal page shot.
+
+**Known gaps**
+- Travellers are journey-cast bodies with slot tints (no new faces): Marta / Hanna share the innkeeper's, Otto / Tomas the
+  father's, Ilse the exam witch's.
+- The hat ignores colliders (it may pass through a tree crown); the carter walks a straight line (no avoidance).
+- Story steps use their own tracker again only when the errand target is farther than 700 m.
+

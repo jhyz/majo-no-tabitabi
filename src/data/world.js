@@ -45,6 +45,19 @@ export const RIVERS = [
  {id:'westbrook',pts:[[-879,-1177],[-812,-1035],[-759,-902],[-798,-738],[-708,-624],[-580,-565],[-455,-532]]}
 ];
 
+/** Saya's practice field (episode two): the worn earth track ringing it, an oval round the practice anchor (radii in m,
+ *  `tilt` = yaw of the long axis). Drawn as a footpath loop (ROADS 'practice_track'): pale dirt with ruts, no grass on it;
+ *  the field's props stand outside it (world/builders/practice-field.js). The ring course flies over its north curve. */
+export const PRACTICE_TRACK = { x: JOURNEY_ANCHORS.practice.x, z: JOURNEY_ANCHORS.practice.z, rx: 22, rz: 15.5, tilt: 0.12, n: 28 };
+function trackLoop(t) {
+  const pts = [], c = Math.cos(t.tilt), s = Math.sin(t.tilt);
+  for (let i = 0; i <= t.n; i++) {
+    const a = (i % t.n) / t.n * Math.PI * 2, x = Math.cos(a) * t.rx, z = Math.sin(a) * t.rz;
+    pts.push([+(t.x + x * c + z * s).toFixed(2), +(t.z - x * s + z * c).toFixed(2)]);
+  }
+  return pts;
+}
+
 /** Footpaths (drawn on the terrain, kept clear of trees). Bridges sit where a road crosses a river (see BRIDGES). */
 export const ROADS = [
   {id:'crossing',pts:ROAD_ACROSS},
@@ -57,6 +70,7 @@ export const ROADS = [
   {id:'forest_trial',pts:[[2055,-22],[2075,-32],[2080,-65],[2100,-84],[2130,-96],[2165,-110]]},
   {id:'upper_city',pts:[[-2108,-506],[-2089,-506],[-2077,-505],[-2065,-513],[-2040,-541],[-2018,-574],[-2015,-599],[-2035,-624]]},
   {id:'grass_lesson',pts:[[-2105,-429],[-2141,-419],[-2179,-414],[-2202,-405]]},
+  {id:'practice_track',pts:trackLoop(PRACTICE_TRACK)},
   ...BELL_ROADS.map((street,i)=>({id:'mage_lane_'+i,pts:street.map(toBellWorld)}))
 ];
 

@@ -17,9 +17,11 @@ export function lin(hex, k = 1) {
 
 // settlement kinds: 1 raked gravel, 2 stone plaza, 3 dirt yard, 4 dirt + leaves, 5 stone (palace), 6 stone (snowy shrine)
 // w = kind + plaza radius fraction
+// practice (errands round): a grass field with only a small worn spot where Saya stands; its earth track is the
+// 'practice_track' footpath loop (data/world.js), which a dirt kind keeps unpaved (it was a 12 m stone plaza)
 const SETTLE = [
   ['hometown', 1.62], ['bellcrown', 2.34], ['gate', 3.2], ['inn', 4.26],
-  ['bellkeep', 5.78], ['roof', 6.7], ['practice', 2.42], ['trial', 2.18],
+  ['bellkeep', 5.78], ['roof', 6.7], ['practice', 3.1], ['trial', 2.18],
 ];
 
 

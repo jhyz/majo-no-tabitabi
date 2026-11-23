@@ -2,7 +2,7 @@
 // Run the game in a private headless Chrome, drive it with a script, take screenshots, report errors.
 //
 //   node tools/play.mjs --name mytest [--systems sky,terrain] [--params "pos=-455,150"] [--script path.js | --eval "code"]
-//                       [--size 1280x720] [--timeout 180] [--quality high]
+//                       [--size 1280x720] [--timeout 180] [--quality high] [--dpr 3]
 //
 // --systems   build only these systems (others absent; the core supplies a fallback sky / ground / free camera)
 // --params    extra URL parameters. autostart=1 (skip title, never touches the real save) and mute=1 are always set.
@@ -27,6 +27,8 @@
 //               await T.touchDown(id, x, y)   await T.touchMove(id, x, y)   await T.touchUp(id)
 //               await T.tap(x, y, ms=60)       await T.swipe(id, x0, y0, x1, y1, steps=8, ms=200)
 //            Buttons: G.ui.touch.where('cast') -> {x, y, w};  stick: G.ui.touch.stick -> {cx, cy, r}.
+// --dpr      device pixel ratio of the emulated screen (default 1; a phone is ~3: --mobile --size 844x390 --dpr 3).
+//            Screenshots are then saved at device pixels (2532x1170 for that phone).
 // --profile  name of a persistent browser profile under .tmp/profiles/ (keeps the save between runs; default: throwaway).
 // Without a script: waits 2.5 s and saves final.png.
 // Output folder: .tmp/play/<name>/ (printed at the end). Exit code 0 = no errors, 2 = errors were reported.
@@ -64,8 +66,10 @@ if (opt('quality')) usp.set('quality', opt('quality'));
 
 const page = await launch({ width: W, height: H, profileDir: opt('profile') ? path.join(TMP, 'profiles', opt('profile').replace(/[^\w.-]/g, '_')) : null });
 const MOBILE = args.includes('--mobile');
+const DPR = Number(opt('dpr', 1)) > 0 ? Number(opt('dpr', 1)) : 1;
+if (!MOBILE && DPR !== 1) await page.send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: DPR, mobile: false });
 if (MOBILE) {
-  await page.send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: 1, mobile: true, screenOrientation: { type: W > H ? 'landscapePrimary' : 'portraitPrimary', angle: W > H ? 90 : 0 } });
+  await page.send('Emulation.setDeviceMetricsOverride', { width: W, height: H, deviceScaleFactor: DPR, mobile: true, screenOrientation: { type: W > H ? 'landscapePrimary' : 'portraitPrimary', angle: W > H ? 90 : 0 } });
   await page.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
   await page.send('Runtime.addBinding', { name: '__mvTouch' });
   // the page asks for a touch event; it is sent for real and the page is told when it has been dispatched
