@@ -491,7 +491,7 @@ function updateDuck(rdt) {
 // ------------------------------------------------------------------ preloading (idle time)
 const COMMON = ['step_grass', 'step_stone', 'step_wood', 'step_water', 'step_path', 'jump', 'jump_air', 'land', 'dodge', 'wings_open',
   'ui_move', 'ui_select', 'ui_open', 'ui_close', 'ui_page', 'ui_error', 'splash', 'steam', 'ignite', 'freeze', 'shatter_ice', 'player_hurt',
-  'broom_summon', 'broom_dismiss', 'broom_boost', 'cast_charm', 'hit_charm', 'pickup', 'coin', 'hit_body', 'enemy_hit', 'enemy_die', 'explosion',
+  'broom_summon', 'broom_dismiss', 'player_broom_boost', 'broom_boost', 'cast_charm', 'hit_charm', 'pickup', 'coin', 'hit_body', 'enemy_hit', 'enemy_die', 'explosion',
   'cast_fire', 'cast_water', 'cast_ice', 'cast_wind', 'cast_thunder', 'cast_earth', 'cast_sun', 'cast_moon',
   'hit_fire', 'hit_water', 'hit_ice', 'hit_wind', 'hit_thunder', 'hit_earth', 'hit_sun', 'hit_moon', 'thunder', 'wood_break', 'hit_wood', 'hit_stone'];
 

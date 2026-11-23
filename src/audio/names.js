@@ -83,6 +83,7 @@ export const SFX = {
   broom_summon:  { ids: ['sfx_teleport_1'], vol: 0.6, pitch: 0.03, poly: 1, cd: 0.4, range: 40, also: [{ name: 'sparkle', chance: 1, vol: 0.5, delay: 0.1 }] },
   broom_dismiss: { ids: ['sfx_teleport_2'], vol: 0.45, rate: 1.25, pitch: 0.03, poly: 1, cd: 0.4, range: 40 },
   broom_boost:   { ids: ['sfx_whoosh_1', 'sfx_whoosh_3'], vol: 0.75, pitch: 0.05, poly: 1, cd: 0.3, range: 40 },
+  player_broom_boost: { ids: ['sfx_broom_tailwind'], vol: 0.95, pitch: 0, poly: 1, cd: 0.3, range: 40 },
   broom_turn:    { ids: ['sfx_whoosh_2'], vol: 0.5, pitch: 0.08, poly: 1, cd: 0.3, range: 40 },
   broom_loop:    { ids: ['sfx_broom_whoosh_loop'], loop: true, vol: 0.7 },
 

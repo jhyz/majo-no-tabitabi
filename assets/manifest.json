@@ -15188,6 +15188,16 @@
   "notes": "Derived: PerituneMaterial_Ohayashi_j",
   "preload": false
  },
+ "sfx_broom_tailwind": {
+  "file": "audio/sfx/sfx_broom_tailwind.ogg",
+  "type": "audio",
+  "license": "Original project audio",
+  "author": "Generated for this project",
+  "source": "Original stereo gust synthesized from filtered noise",
+  "duration": 0.81,
+  "loop": false,
+  "preload": false
+ },
  "sfx_broom_whoosh_loop": {
   "file": "audio/sfx/sfx_broom_whoosh_loop.ogg",
   "type": "audio",
